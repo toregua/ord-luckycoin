@@ -210,7 +210,7 @@ fn inscribe_with_optional_satpoint_arg() {
 
   TestServer::spawn_with_args(&rpc_server, &["--index-sats"]).assert_response_regex(
     "/sat/100000000000000",
-    format!(".*<a href=/shibescription/{inscription}>.*"),
+    format!(".*<a href=/luckyscription/{inscription}>.*"),
   );
 
   TestServer::spawn_with_args(&rpc_server, &[])

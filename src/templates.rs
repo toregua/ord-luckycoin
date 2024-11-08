@@ -6,7 +6,7 @@ pub(crate) use {
   home::HomeHtml,
   iframe::Iframe,
   input::InputHtml,
-  inscription::{InscriptionByAddressJson, InscriptionHtml, InscriptionJson, ShibescriptionJson},
+  inscription::{InscriptionByAddressJson, InscriptionHtml, InscriptionJson, LuckyscriptionJson},
   inscriptions::InscriptionsHtml,
   lky20::{LKY20Balance, LKY20Output, LKY20UtxoOutput, Operation, LKY20},
   lune::{

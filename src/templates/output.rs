@@ -172,7 +172,7 @@ mod tests {
         <dl>
           <dt>inscriptions</dt>
           <dd class=thumbnails>
-            <a href=/shibescription/1{64}i1><iframe .* src=/preview/1{64}i1></iframe></a>
+            <a href=/luckyscription/1{64}i1><iframe .* src=/preview/1{64}i1></iframe></a>
           </dd>
           .*
         </dl>

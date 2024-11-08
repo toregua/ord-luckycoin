@@ -16,10 +16,10 @@ pub(crate) fn run(options: Options) -> SubcommandResult {
   let unspent_outputs = index.get_unspent_outputs(Wallet::load(&options)?)?;
 
   let explorer = match options.chain() {
-    Chain::Mainnet => "https://ordinals.com/shibescription/",
-    Chain::Regtest => "http://localhost/shibescription/",
-    Chain::Signet => "https://signet.ordinals.com/shibescription/",
-    Chain::Testnet => "https://testnet.ordinals.com/shibescription/",
+    Chain::Mainnet => "https://ordinals.com/luckyscription/",
+    Chain::Regtest => "http://localhost/luckyscription/",
+    Chain::Signet => "https://signet.ordinals.com/luckyscription/",
+    Chain::Testnet => "https://testnet.ordinals.com/luckyscription/",
   };
 
   let mut output = Vec::new();

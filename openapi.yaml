@@ -429,10 +429,10 @@ paths:
               schema:
                 type: string
 
-  /shibescription/{inscription_id}:
+  /luckyscription/{inscription_id}:
     get:
-      summary: Get Shibescription details
-      operationId: getShibescription
+      summary: Get Luckyscription details
+      operationId: getLuckyscription
       parameters:
         - name: inscription_id
           in: path
@@ -442,7 +442,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Shibescription details
+          description: Luckyscription details
           content:
             text/html:
               schema:
