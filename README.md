@@ -6,7 +6,7 @@
 
 ‼️ DISCLAIMER: OUR CODE MAY STILL HAVE BUGS️
 
-We included the real wonky block rewards from block 0 until block 144,999. We invite you to critically review our code in `src/epoch.rs`. We are convinced that doginals should use actual block rewards instead of a simplified version.
+We included the real wonky block rewards from block 0 until block 144,999. We invite you to critically review our code in `src/epoch.rs`. We are convinced that luckynals should use actual block rewards instead of a simplified version.
 
 ## API documentation
 You can find the API documentation [here](openapi.yaml).
