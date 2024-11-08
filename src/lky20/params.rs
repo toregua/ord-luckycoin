@@ -1,7 +1,7 @@
 use super::num::Num;
 use once_cell::sync::Lazy;
 
-pub const PROTOCOL_LITERAL: &str = "drc-20";
+pub const PROTOCOL_LITERAL: &str = "lky-20";
 pub const MAX_DECIMAL_WIDTH: u8 = 18;
 pub static BIGDECIMAL_TEN: Lazy<Num> = Lazy::new(|| Num::from(10u64));
 pub static MAXIMUM_SUPPLY: Lazy<Num> = Lazy::new(|| Num::from(u64::MAX));
