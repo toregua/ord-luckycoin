@@ -100,7 +100,11 @@ pub(crate) fn deserialize_lky20_operation(
 fn deserialize_lky20(s: &str) -> Result<RawOperation, JSONError> {
   let value: Value = serde_json::from_str(s).map_err(|_| JSONError::InvalidJson)?;
   let identifier = value.get("p");
-  if identifier != Some(&json!(PROTOCOL_LITERAL)) {
+  if let Some(Value::String(p_value)) = identifier {
+    if !p_value.eq_ignore_ascii_case(PROTOCOL_LITERAL) {
+      return Err(JSONError::NotLKY20Json);
+    }
+  } else {
     return Err(JSONError::NotLKY20Json);
   }
 
