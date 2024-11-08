@@ -48,7 +48,7 @@ impl Chain {
     }
   }
 
-  pub(crate) fn first_dune_height(self) -> u32 {
+  pub(crate) fn first_lune_height(self) -> u32 {
     match self {
       Self::Mainnet => 5084000,
       Self::Regtest => 0,
@@ -68,10 +68,7 @@ impl Chain {
     bitcoin::consensus::deserialize(&genesis_buf).unwrap()
   }
 
-  pub(crate) fn address_from_script(
-    self,
-    script: &Script,
-  ) -> Result<Address, address::Error> {
+  pub(crate) fn address_from_script(self, script: &Script) -> Result<Address, address::Error> {
     Address::from_script(script, self.network())
   }
 

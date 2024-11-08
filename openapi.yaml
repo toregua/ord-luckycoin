@@ -1,13 +1,13 @@
 openapi: 3.0.0
 info:
-  title: Wonky Ord API
-  description: API for getting transactions, blocks, balances, inscriptions, and dune info on Dogecoin.
+  title: Luckycoin Ord API
+  description: API for getting transactions, blocks, balances, inscriptions, and lune info on Luckycoin.
   version: 1.0.0
 servers:
   - url: http://localhost:8080
     description: Local development server
-  - url: https://wonky-ord.dogeord.io
-    description: Wonky Prod Server
+  - url: https://luckycoin-ord.luckyord.io
+    description: Luckycoin Prod Server
 
 paths:
   /block-count:
@@ -181,10 +181,10 @@ paths:
                   total_inscription_shibes:
                     type: integer
 
-  /drc20/balance/{address}:
+  /lky20/balance/{address}:
     get:
-      summary: Get DRC20 balance for an address
-      operationId: getDrc20Balance
+      summary: Get LKY20 balance for an address
+      operationId: getLky20Balance
       parameters:
         - name: address
           in: path
@@ -212,43 +212,43 @@ paths:
             type: integer
       responses:
         '200':
-          description: DRC20 balance
+          description: LKY20 balance
           content:
             application/json:
               schema:
                 type: object
                 properties:
-                  drc20:
+                  lky20:
                     type: array
                     items:
                       type: object
 
-  /drc20/tick/{tick}:
+  /lky20/tick/{tick}:
     get:
-      summary: Get DRC20 tick information
-      operationId: getDrc20TickInfo
+      summary: Get LKY20 tick information
+      operationId: getLky20TickInfo
       parameters:
         - name: tick
           in: path
           required: true
-          description: DRC20 tick identifier
+          description: LKY20 tick identifier
           schema:
             type: string
       responses:
         '200':
-          description: DRC20 tick information
+          description: LKY20 tick information
           content:
             application/json:
               schema:
                 type: object
 
-  /drc20/tick:
+  /lky20/tick:
     get:
-      summary: Get all DRC20 tick information
-      operationId: getAllDrc20TickInfo
+      summary: Get all LKY20 tick information
+      operationId: getAllLky20TickInfo
       responses:
         '200':
-          description: DRC20 tick information
+          description: LKY20 tick information
           content:
             application/json:
               schema:
@@ -256,10 +256,10 @@ paths:
                 items:
                   type: object
 
-  /drc20/validate:
+  /lky20/validate:
     get:
-      summary: Validate DRC20 inscriptions
-      operationId: validateDrc20
+      summary: Validate LKY20 inscriptions
+      operationId: validateLky20
       parameters:
         - name: addresses
           in: query
@@ -281,15 +281,15 @@ paths:
               schema:
                 type: object
 
-  /dune/{dune}:
+  /lune/{lune}:
     get:
-      summary: Get dune details
-      operationId: getDune
+      summary: Get lune details
+      operationId: getLUNE
       parameters:
-        - name: dune
+        - name: lune
           in: path
           required: true
-          description: Dune identifier
+          description: LUNE identifier
           schema:
             type: string
         - name: json
@@ -300,7 +300,7 @@ paths:
             type: boolean
       responses:
         '200':
-          description: Dune details
+          description: LUNE details
           content:
             text/html:
               schema:
@@ -309,34 +309,34 @@ paths:
               schema:
                 type: object
 
-  /dunes:
+  /lunes:
     get:
-      summary: Get all dunes
-      operationId: getAllDunes
+      summary: Get all lunes
+      operationId: getAllLUNEs
       responses:
         '200':
-          description: List of dunes
+          description: List of lunes
           content:
             text/html:
               schema:
                 type: string
 
-  /dunes/balances:
+  /lunes/balances:
     get:
-      summary: Get dune balances
-      operationId: getDuneBalances
+      summary: Get lune balances
+      operationId: getLUNEBalances
       responses:
         '200':
-          description: Dune balances
+          description: LUNE balances
           content:
             text/html:
               schema:
                 type: string
 
-  /dunes/balance/{address}:
+  /lunes/balance/{address}:
     get:
-      summary: Get dune balances for an address
-      operationId: getDuneBalancesByAddress
+      summary: Get lune balances for an address
+      operationId: getLUNEBalancesByAddress
       parameters:
         - name: address
           in: path
@@ -347,24 +347,24 @@ paths:
         - name: show_all
           in: query
           required: false
-          description: Show all dune balances
+          description: Show all lune balances
           schema:
             type: boolean
-        - name: list_dunes
+        - name: list_lunes
           in: query
           required: false
-          description: List dune information
+          description: List lune information
           schema:
             type: boolean
         - name: filter
           in: query
           required: false
-          description: Filter dune information
+          description: Filter lune information
           schema:
             type: string
       responses:
         '200':
-          description: Dune balance information
+          description: LUNE balance information
           content:
             application/json:
               schema:
@@ -448,10 +448,10 @@ paths:
               schema:
                 type: string
 
-  /dunes_on_outputs:
+  /lunes_on_outputs:
     get:
-      summary: Get dunes by output
-      operationId: getDunesByOutput
+      summary: Get lunes by output
+      operationId: getLUNEsByOutput
       parameters:
         - name: outputs
           in: query
@@ -461,7 +461,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Dunes on outputs
+          description: LUNEs on outputs
           content:
             application/json:
               schema:
@@ -512,10 +512,10 @@ paths:
               schema:
                 type: object
 
-  /drc20/balance/{address}/{page}:
+  /lky20/balance/{address}/{page}:
     get:
-      summary: Get paginated DRC20 balance for an address
-      operationId: getDrc20BalancePaginated
+      summary: Get paginated LKY20 balance for an address
+      operationId: getLky20BalancePaginated
       parameters:
         - name: address
           in: path
@@ -543,16 +543,16 @@ paths:
             type: integer
       responses:
         '200':
-          description: DRC20 balance
+          description: LKY20 balance
           content:
             application/json:
               schema:
                 type: object
 
-  /dunes/balance/{address}/{page}:
+  /lunes/balance/{address}/{page}:
     get:
-      summary: Get paginated dune balances for an address
-      operationId: getDuneBalancesPaginated
+      summary: Get paginated lune balances for an address
+      operationId: getLUNEBalancesPaginated
       parameters:
         - name: address
           in: path
@@ -569,24 +569,24 @@ paths:
         - name: show_all
           in: query
           required: false
-          description: Show all dune balances
+          description: Show all lune balances
           schema:
             type: boolean
-        - name: list_dunes
+        - name: list_lunes
           in: query
           required: false
-          description: List dune information
+          description: List lune information
           schema:
             type: boolean
         - name: filter
           in: query
           required: false
-          description: Filter dune information
+          description: Filter lune information
           schema:
             type: string
       responses:
         '200':
-          description: Dune balance information
+          description: LUNE balance information
           content:
             application/json:
               schema:
@@ -809,7 +809,7 @@ components:
           type: integer
         offset:
           type: integer
-    DuneOutput:
+    LUNEOutput:
       type: object
       properties:
         txid:
@@ -822,10 +822,10 @@ components:
           type: integer
         balance:
           type: integer
-    DuneBalance:
+    LUNEBalance:
       type: object
       properties:
-        dune:
+        lune:
           type: string
         divisibility:
           type: integer
@@ -838,11 +838,11 @@ components:
         balances:
           type: array
           items:
-            $ref: '#/components/schemas/DuneOutput'
-    DuneHolder:
+            $ref: '#/components/schemas/LUNEOutput'
+    LUNEHolder:
       type: object
       properties:
-        dune:
+        lune:
           type: string
         holder:
           type: array

@@ -1,14 +1,13 @@
-use crate::sat_point::SatPoint;
 use super::*;
+use crate::sat_point::SatPoint;
 
 #[derive(Debug, PartialEq, Clone)]
 pub(crate) enum Outgoing {
   Amount(Amount),
   InscriptionId(InscriptionId),
   SatPoint(SatPoint),
-  Dune { decimal: Decimal, dune: SpacedDune },
+  Lune { decimal: Decimal, lune: SpacedLune },
 }
-
 
 impl FromStr for Outgoing {
   type Err = Error;
@@ -34,7 +33,7 @@ impl FromStr for Outgoing {
         "
       )
       .unwrap();
-      static ref DUNE: Regex = Regex::new(
+      static ref LUNE: Regex = Regex::new(
         r"(?x)
         ^
         (
@@ -60,17 +59,16 @@ impl FromStr for Outgoing {
       Self::InscriptionId(s.parse()?)
     } else if AMOUNT.is_match(s) {
       Self::Amount(s.parse()?)
-    } else if let Some(captures) = DUNE.captures(s) {
-      Self::Dune {
+    } else if let Some(captures) = LUNE.captures(s) {
+      Self::Lune {
         decimal: captures[1].parse()?,
-        dune: captures[2].parse()?,
+        lune: captures[2].parse()?,
       }
     } else {
       bail!("unrecognized outgoing: {s}");
     })
   }
 }
-
 
 #[cfg(test)]
 mod tests {

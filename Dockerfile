@@ -32,8 +32,6 @@ COPY ./justfile /app
 
 WORKDIR /app
 
-RUN cp starting_sats.json /starting_sats.json
-RUN cp subsidies.json /subsidies.json
 RUN cargo build --release
 
 # ----------------------------------------------------------------------------------------------------------------------
@@ -44,7 +42,5 @@ RUN apt-get update && \
     ca-certificates curl file git build-essential libssl-dev pkg-config
 
 COPY --from=ord-builder /app/target/release/ord /usr/local/bin/ord
-COPY --from=ord-builder /subsidies.json /subsidies.json
-COPY --from=ord-builder /starting_sats.json /starting_sats.json
 
 RUN mkdir /root/.data

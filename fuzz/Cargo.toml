@@ -20,8 +20,8 @@ libfuzzer-sys = "0.4"
 ord = { path = ".." }
 
 [[bin]]
-name = "dunestone-decipher"
-path = "fuzz_targets/dunestone_decipher.rs"
+name = "lunestone-decipher"
+path = "fuzz_targets/lunestone_decipher.rs"
 test = false
 doc = false
 

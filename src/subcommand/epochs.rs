@@ -7,8 +7,8 @@ pub struct Output {
 
 pub(crate) fn run() -> SubcommandResult {
   let mut starting_sats = Vec::new();
-  for sat in Epoch::get_starting_sats() {
-    starting_sats.push(sat.clone());
+  for sat in Epoch::STARTING_SATS {
+    starting_sats.push(sat);
   }
 
   Ok(Box::new(Output { starting_sats }))

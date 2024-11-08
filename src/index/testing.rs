@@ -1,5 +1,5 @@
-use std::collections::HashMap;
 use super::*;
+use std::collections::HashMap;
 
 pub(crate) struct ContextBuilder {
   args: Vec<OsString>,
@@ -102,13 +102,13 @@ impl Context {
   }
 
   #[track_caller]
-  pub(crate) fn assert_dunes(
+  pub(crate) fn assert_lunes(
     &self,
-    mut dunes: impl AsMut<[(DuneId, DuneEntry)]>,
-    mut balances: impl AsMut<[(OutPoint, Vec<(DuneId, u128)>)]>,
+    mut lunes: impl AsMut<[(LuneId, LuneEntry)]>,
+    mut balances: impl AsMut<[(OutPoint, Vec<(LuneId, u128)>)]>,
   ) {
-    let dunes = dunes.as_mut();
-    dunes.sort_by_key(|(id, _)| *id);
+    let lunes = lunes.as_mut();
+    lunes.sort_by_key(|(id, _)| *id);
 
     let balances = balances.as_mut();
     balances.sort_by_key(|(outpoint, _)| *outpoint);
@@ -117,11 +117,11 @@ impl Context {
       balances.sort_by_key(|(id, _)| *id);
     }
 
-    assert_eq!(dunes, self.index.dunes().unwrap());
+    assert_eq!(lunes, self.index.lunes().unwrap());
 
-    assert_eq!(balances, self.index.get_dune_balances());
+    assert_eq!(balances, self.index.get_lune_balances());
 
-    let mut outstanding: HashMap<DuneId, u128> = HashMap::new();
+    let mut outstanding: HashMap<LuneId, u128> = HashMap::new();
 
     for (_, balances) in balances {
       for (id, balance) in balances {
@@ -129,7 +129,7 @@ impl Context {
       }
     }
 
-    for (id, entry) in dunes {
+    for (id, entry) in lunes {
       assert_eq!(
         outstanding.get(id).copied().unwrap_or_default(),
         entry.supply - entry.burned

@@ -1,5 +1,5 @@
-use crate::decimal_sat::DecimalSat;
 use super::*;
+use crate::decimal_sat::DecimalSat;
 
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Display, Ord, PartialOrd, Deserialize, Serialize)]
 #[serde(transparent)]
@@ -12,7 +12,7 @@ impl Sat {
 
   pub(crate) fn height(self) -> Height {
     self.epoch().starting_height()
-        + u32::try_from(self.epoch_position() / self.epoch().subsidy()).unwrap()
+      + u32::try_from(self.epoch_position() / self.epoch().subsidy()).unwrap()
   }
 
   pub(crate) fn epoch(self) -> Epoch {
@@ -136,13 +136,13 @@ mod tests {
     assert_eq!(Sat(0).third(), 0);
     assert_eq!(Sat(1).third(), 1);
     assert_eq!(
-      Sat(Height(0).subsidy() as u128 - 1).third(),
+      Sat(Height(0).subsidy() as u64 - 1).third(),
       Height(0).subsidy() - 1
     );
-    assert_eq!(Sat(Height(0).subsidy() as u128).third(), 0);
-    assert_eq!(Sat(Height(0).subsidy() as u128 + 1).third(), 1);
+    assert_eq!(Sat(Height(0).subsidy() as u64).third(), 0);
+    assert_eq!(Sat(Height(0).subsidy() as u64 + 1).third(), 1);
     assert_eq!(
-      Sat(Epoch(1).starting_sat().n() + Epoch(1).subsidy() as u128).third(),
+      Sat(Epoch(1).starting_sat().n() + Epoch(1).subsidy() as u64).third(),
       0
     );
   }

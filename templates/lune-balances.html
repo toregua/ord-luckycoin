@@ -1,0 +1,26 @@
+<h1>Lune Balances</h1>
+<table>
+  <tr>
+    <th>lune</th>
+    <th>balances</th>
+  </tr>
+  %% for (lune, balances) in &self.balances {
+  <tr>
+    <td><a href=/lune/{{ lune }}>{{ lune }}</a></td>
+    <td>
+      <table>
+        %% for (outpoint, balance) in balances {
+        <tr>
+          <td class=monospace>
+            <a href=/output/{{ outpoint }}>{{ outpoint }}</a>
+          </td>
+          <td class=monospace>
+            {{ balance }}
+          </td>
+        </tr>
+        %% }
+      </table>
+    </td>
+  </tr>
+  %% }
+</table>

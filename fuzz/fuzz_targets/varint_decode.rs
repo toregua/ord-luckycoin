@@ -1,6 +1,6 @@
 #![no_main]
 
-use {libfuzzer_sys::fuzz_target, ord::dunes::varint};
+use {libfuzzer_sys::fuzz_target, ord::lunes::varint};
 
 fuzz_target!(|input: &[u8]| {
   let mut i = 0;

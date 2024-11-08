@@ -3,6 +3,7 @@
 use {
   api::Api,
   bitcoin::{
+    blockdata::constants::COIN_VALUE,
     blockdata::script,
     consensus::encode::{deserialize, serialize},
     hash_types::BlockHash,
@@ -178,9 +179,9 @@ impl Handle {
   }
 
   pub fn mine_blocks_with_subsidy(&self, n: u64, subsidy: u64) -> Vec<Block> {
-    let mut dogecoin_rpc_data = self.state();
+    let mut luckycoin_rpc_data = self.state();
     (0..n)
-      .map(|_| dogecoin_rpc_data.push_block(subsidy))
+      .map(|_| luckycoin_rpc_data.push_block(subsidy))
       .collect()
   }
 

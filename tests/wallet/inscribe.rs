@@ -39,14 +39,14 @@ fn inscribe_works_with_huge_expensive_inscriptions() {
 }
 
 #[test]
-fn inscribe_fails_if_dogecoin_core_is_too_old() {
+fn inscribe_fails_if_luckycoin_core_is_too_old() {
   let rpc_server = test_bitcoincore_rpc::builder().version(1140500).build();
 
   CommandBuilder::new("wallet inscribe hello.txt")
     .write("hello.txt", "HELLOWORLD")
     .expected_exit_code(1)
     .expected_stderr(
-      "error: Dogecoin Core 1.14.6.0 or newer required, current version is 1.14.5.0\n",
+      "error: Luckycoin Core 1.14.6.0 or newer required, current version is 1.14.5.0\n",
     )
     .rpc_server(&rpc_server)
     .run();

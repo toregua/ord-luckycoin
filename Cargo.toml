@@ -1,12 +1,12 @@
 [package]
-name = "ord-dogecoin"
-description = "◉ Ordinal wallet and block explorer for dogecoin"
+name = "ord-luckycoin"
+description = "◉ Ordinal wallet and block explorer for luckycoin"
 version = "0.5.1"
 license = "CC0-1.0"
 edition = "2021"
 autotests = false
-homepage = "https://github.com/apezord/ord-dogecoin"
-repository = "https://github.com/apezord/ord-dogecoin"
+homepage = "https://github.com/toregua/ord-luckycoin"
+repository = "https://github.com/toregua/ord-luckycoin"
 autobins = false
 rust-version = "1.67"
 
@@ -62,8 +62,13 @@ sysinfo = "0.30.3"
 tempfile = "3.2.0"
 tokio = { version = "1.17.0", features = ["rt-multi-thread"] }
 tokio-stream = "0.1.9"
-tokio-util = {version = "0.7.3", features = ["compat"] }
-tower-http = { version = "0.3.3", features = ["compression-br", "compression-gzip", "cors", "set-header"] }
+tokio-util = { version = "0.7.3", features = ["compat"] }
+tower-http = { version = "0.3.3", features = [
+    "compression-br",
+    "compression-gzip",
+    "cors",
+    "set-header",
+] }
 url = "2.3.0"
 thiserror = "1.0.56"
 
@@ -90,5 +95,5 @@ path = "tests/lib.rs"
 pulldown-cmark = "0.9.2"
 
 [patch.crates-io]
-bitcoin = { git = "https://github.com/apezord/rust-dogecoin" }
-bitcoincore-rpc = { git = "https://github.com/apezord/rust-dogecoincore-rpc" }
+bitcoin = { git = "https://github.com/toregua/rust-luckycoin" }
+bitcoincore-rpc = { git = "https://github.com/toregua/rust-luckycoincore-rpc" }

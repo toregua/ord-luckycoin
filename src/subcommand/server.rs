@@ -1,3 +1,5 @@
+use crate::lky20::token_info::{ExtendedTokenInfo, HolderBalanceForTick, HoldersInfoForTick};
+use crate::templates::{LKY20Balance, LKY20Output, LKY20UtxoOutput};
 use http::HeaderName;
 use linked_hash_map::LinkedHashMap;
 use rayon::prelude::{IntoParallelRefIterator, ParallelIterator};
@@ -9,15 +11,15 @@ use {
   },
   super::*,
   crate::{
-    drc20::{script_key::ScriptKey, Tick},
+    lky20::{script_key::ScriptKey, Tick},
     page_config::PageConfig,
     templates::{
-      AddressOutputJson, BlockHtml, BlockJson, DuneAddressJson, DuneBalance, DuneBalancesHtml,
-      DuneEntryJson, DuneHtml, DuneJson, DuneOutput, DuneOutputJson, DunesHtml, HomeHtml,
-      InputHtml, InscriptionByAddressJson, InscriptionHtml, InscriptionJson, InscriptionsHtml,
-      OutputHtml, OutputJson, PageContent, PageHtml, PreviewAudioHtml, PreviewImageHtml,
-      PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, Operation, PreviewUnknownHtml, PreviewVideoHtml,
-      RangeHtml, RareTxt, SatHtml, ShibescriptionJson, TransactionHtml, Utxo, DRC20,
+      AddressOutputJson, BlockHtml, BlockJson, HomeHtml, InputHtml, InscriptionByAddressJson,
+      InscriptionHtml, InscriptionJson, InscriptionsHtml, LuneAddressJson, LuneBalance,
+      LuneBalancesHtml, LuneEntryJson, LuneHtml, LuneJson, LuneOutput, LuneOutputJson, LunesHtml,
+      Operation, OutputHtml, OutputJson, PageContent, PageHtml, PreviewAudioHtml, PreviewImageHtml,
+      PreviewModelHtml, PreviewPdfHtml, PreviewTextHtml, PreviewUnknownHtml, PreviewVideoHtml,
+      RangeHtml, RareTxt, SatHtml, ShibescriptionJson, TransactionHtml, Utxo, LKY20,
     },
   },
   axum::{
@@ -47,9 +49,6 @@ use {
     set_header::SetResponseHeaderLayer,
   },
 };
-use crate::drc20::operation::{deserialize_drc20_operation, Action};
-use crate::drc20::token_info::{ExtendedTokenInfo, HolderBalanceForTick, HoldersInfoForTick};
-use crate::templates::{DRC20Balance, DRC20Output, DRC20UtxoOutput};
 
 mod error;
 mod query;
@@ -125,12 +124,12 @@ struct UtxoBalanceQuery {
 }
 
 #[derive(Deserialize)]
-struct Drc20TickInfoQuery {
+struct Lky20TickInfoQuery {
   show_holder: Option<bool>,
 }
 
 #[derive(Deserialize)]
-struct Drc20BalanceQuery {
+struct Lky20BalanceQuery {
   show_all: Option<bool>,
   show_utxos: Option<bool>,
   tick: Option<String>,
@@ -188,10 +187,10 @@ struct ValidityQuery {
 }
 
 #[derive(Deserialize)]
-struct DunesBalanceQuery {
+struct LunesBalanceQuery {
   show_all: Option<bool>,
-  list_dunes: Option<bool>,
-  filter: Option<SpacedDune>,
+  list_lunes: Option<bool>,
+  filter: Option<SpacedLune>,
 }
 
 #[derive(Deserialize)]
@@ -315,14 +314,14 @@ impl Server {
         .route("/preview/:inscription_id", get(Self::preview))
         .route("/range/:start/:end", get(Self::range))
         .route("/rare.txt", get(Self::rare_txt))
-        .route("/dune/:dune", get(Self::dune))
-        .route("/dunes", get(Self::dunes))
-        .route("/dunes/balances", get(Self::dunes_balances))
+        .route("/lune/:lune", get(Self::lune))
+        .route("/lunes", get(Self::lunes))
+        .route("/lunes/balances", get(Self::lunes_balances))
         .route(
-          "/dunes/balance/:address",
-          get(Self::dunes_by_address_unpaginated),
+          "/lunes/balance/:address",
+          get(Self::lunes_by_address_unpaginated),
         )
-        .route("/dunes/balance/:address/:page", get(Self::dunes_by_address))
+        .route("/lunes/balance/:address/:page", get(Self::lunes_by_address))
         .route(
           "/utxos/balance/:address",
           get(Self::utxos_by_address_unpaginated),
@@ -337,16 +336,16 @@ impl Server {
           get(Self::inscriptions_by_address),
         )
         .route("/inscriptions/validate", get(Self::inscriptions_validate))
-        .route("/drc20/tick/:tick", get(Self::drc20_tick_info))
-        .route("/drc20/tick", get(Self::drc20_all_tick_info))
+        .route("/lky20/tick/:tick", get(Self::lky20_tick_info))
+        .route("/lky20/tick", get(Self::lky20_all_tick_info))
         .route(
-            "/drc20/balance/:address",
-            get(Self::drc20_by_address_unpaginated),
+          "/lky20/balance/:address",
+          get(Self::lky20_by_address_unpaginated),
         )
-        .route("/drc20/validate", get(Self::drc20_validate))
-        .route("/drc20/ticks", get(Self::drc20_all_ticks))
-        .route("/drc20/tick/holder/:tick", get(Self::drc20_tick_holder))
-        .route("/dunes_on_outputs", get(Self::dunes_by_outputs))
+        .route("/lky20/validate", get(Self::lky20_validate))
+        .route("/lky20/ticks", get(Self::lky20_all_ticks))
+        .route("/lky20/tick/holder/:tick", get(Self::lky20_tick_holder))
+        .route("/lunes_on_outputs", get(Self::lunes_by_outputs))
         .route("/sat/:sat", get(Self::sat))
         .route("/search", get(Self::search_by_query))
         .route("/search/*query", get(Self::search_by_path))
@@ -594,7 +593,7 @@ impl Server {
 
     let inscriptions = index.get_inscriptions_on_output(outpoint)?;
 
-    let dunes = index.get_dune_balances_for_outpoint(outpoint)?;
+    let lunes = index.get_lune_balances_for_outpoint(outpoint)?;
 
     Ok(
       OutputHtml {
@@ -603,7 +602,7 @@ impl Server {
         list,
         chain: page_config.chain,
         output,
-        dunes,
+        lunes,
       }
       .page(page_config),
     )
@@ -652,7 +651,7 @@ impl Server {
     let mut inscription_shibes = 0u128;
 
     for outpoint in outpoints {
-      if !index.get_dune_balances_for_outpoint(outpoint)?.is_empty() {
+      if !index.get_lune_balances_for_outpoint(outpoint)?.is_empty() {
         continue;
       }
       if !show_all
@@ -711,27 +710,27 @@ impl Server {
     )
   }
 
-  async fn drc20_by_address(
+  async fn lky20_by_address(
     Extension(index): Extension<Arc<Index>>,
     Path(params): Path<(String, u32)>,
-    Query(query): Query<Drc20BalanceQuery>,
+    Query(query): Query<Lky20BalanceQuery>,
   ) -> ServerResult<Response> {
-    Self::get_drc20_by_address(index, params.0, Some(params.1), query).await
+    Self::get_lky20_by_address(index, params.0, Some(params.1), query).await
   }
 
-  async fn drc20_by_address_unpaginated(
+  async fn lky20_by_address_unpaginated(
     Extension(index): Extension<Arc<Index>>,
     Path(params): Path<String>,
-    Query(query): Query<Drc20BalanceQuery>,
+    Query(query): Query<Lky20BalanceQuery>,
   ) -> ServerResult<Response> {
-    Self::get_drc20_by_address(index, params, None, query).await
+    Self::get_lky20_by_address(index, params, None, query).await
   }
 
-  async fn get_drc20_by_address(
+  async fn get_lky20_by_address(
     index: Arc<Index>,
     address: String,
     page: Option<u32>,
-    query: Drc20BalanceQuery,
+    query: Lky20BalanceQuery,
   ) -> ServerResult<Response> {
     task::block_in_place(|| {
       let (address, page) = (address.clone(), page.unwrap_or(0));
@@ -740,7 +739,7 @@ impl Server {
       let value_filter = query.value_filter.unwrap_or(0);
       let show_utxos = query.show_utxos.unwrap_or(true);
 
-      let mut drc20_utxos: Vec<(DRC20, Utxo, InscriptionId, u64, u64, bool)> = Vec::new();
+      let mut lky20_utxos: Vec<(LKY20, Utxo, InscriptionId, u64, u64, bool)> = Vec::new();
 
       if show_utxos {
         let outpoints: Vec<OutPoint> = index.get_account_outputs(address.clone())?;
@@ -781,10 +780,10 @@ impl Server {
             };
 
             if let Some(content) = str_content {
-              let drc20 = DRC20::from_json_string(content.as_str());
-              if let Some(drc20) = drc20 {
+              let lky20 = LKY20::from_json_string(content.as_str());
+              if let Some(lky20) = lky20 {
                 if let Some(filter) = query.tick.clone() {
-                  if filter != drc20.clone().tick.unwrap_or_default() {
+                  if filter != lky20.clone().tick.unwrap_or_default() {
                     continue;
                   }
                 }
@@ -792,11 +791,11 @@ impl Server {
                 let vout = outpoint.vout;
                 let output = index
                   .get_transaction(txid)?
-                  .ok_or_not_found(|| format!("dunes {txid} current transaction"))?
+                  .ok_or_not_found(|| format!("lunes {txid} current transaction"))?
                   .output
                   .into_iter()
                   .nth(vout.try_into().unwrap())
-                  .ok_or_not_found(|| format!("dunes {vout} current transaction output"))?;
+                  .ok_or_not_found(|| format!("lunes {vout} current transaction output"))?;
                 let shibes = output.value;
                 let script = output.script_pubkey;
 
@@ -804,7 +803,7 @@ impl Server {
                   continue;
                 }
 
-                if let Some(ref op) = drc20.op {
+                if let Some(ref op) = lky20.op {
                   if *op == Operation::Transfer {
                     inscription_ids_to_check.push(inscription_id);
                   }
@@ -817,8 +816,8 @@ impl Server {
                     None
                   };
 
-                drc20_utxos.push((
-                  drc20.clone(),
+                lky20_utxos.push((
+                  lky20.clone(),
                   Utxo {
                     txid,
                     vout,
@@ -837,7 +836,7 @@ impl Server {
         }
         if !inscription_ids_to_check.is_empty() {
           let transferable_logs = index
-            .get_drc20_transferable_by_id(
+            .get_lky20_transferable_by_id(
               &ScriptKey::from_address(address_from_str.clone(), index.get_network()?),
               &inscription_ids_to_check,
             )
@@ -846,8 +845,8 @@ impl Server {
           for (inscription_id, log) in transferable_logs {
             result_map.insert(inscription_id, log.is_some());
           }
-          for (drc20, _, id, _, _, ref mut valid) in &mut drc20_utxos {
-            if let Some(ref op) = drc20.op {
+          for (lky20, _, id, _, _, ref mut valid) in &mut lky20_utxos {
+            if let Some(ref op) = lky20.op {
               if *op == Operation::Transfer {
                 if let Some(&result) = result_map.get(id) {
                   *valid = result;
@@ -863,10 +862,10 @@ impl Server {
       let mut start_index = if page == 0 { 0 } else { (page - 1) * items_per_page };
       let mut element_counter = 0;*/
 
-      let mut drc20balances: Vec<DRC20Balance> = Vec::new();
+      let mut lky20balances: Vec<LKY20Balance> = Vec::new();
 
       let balance = index
-        .get_drc20_balances(&ScriptKey::from_address(
+        .get_lky20_balances(&ScriptKey::from_address(
           address_from_str,
           index.get_network()?,
         ))
@@ -883,15 +882,15 @@ impl Server {
           if entry.overall_balance == 0 {
             continue;
           }
-          let utxos: Vec<DRC20Output> = drc20_utxos
+          let utxos: Vec<LKY20Output> = lky20_utxos
             .iter()
             .filter(|(d20, _, _, _, _, _)| d20.clone().tick.unwrap_or_default() == tick)
             .map(|(d20, utxo, id, number, offset, valid)| {
               let balance = d20.clone().amt.unwrap_or("0".to_string());
               let op = d20.clone().op.unwrap_or(Operation::Unknown);
-              DRC20Output {
+              LKY20Output {
                 utxo: utxo.clone(),
-                drc20: DRC20UtxoOutput {
+                lky20: LKY20UtxoOutput {
                   balance,
                   operation: op,
                   valid: *valid,
@@ -902,22 +901,22 @@ impl Server {
               }
             })
             .collect();
-          let token_info = index.get_drc20_token_info(&entry.tick.clone())?;
+          let token_info = index.get_lky20_token_info(&entry.tick.clone())?;
           let token_info_clone = token_info.clone().unwrap();
           let decimals = token_info_clone.decimal;
           let overall_balance = entry.overall_balance;
           let transferable_balance = entry.transferable_balance;
-          if let Some(drc20_balance) = DRC20Balance::from_strings(
+          if let Some(lky20_balance) = LKY20Balance::from_strings(
             tick.as_str(),
             format_balance(entry.transferable_balance, decimals).as_str(),
             format_balance(entry.overall_balance - entry.transferable_balance, decimals).as_str(),
             utxos,
           ) {
-            drc20balances.push(drc20_balance);
+            lky20balances.push(lky20_balance);
           }
         }
       }
-      Ok(Json(json!({"drc20": drc20balances})).into_response())
+      Ok(Json(json!({"lky20": lky20balances})).into_response())
     })
   }
 
@@ -978,11 +977,11 @@ impl Server {
 
       let output = index
         .get_transaction(txid)?
-        .ok_or_not_found(|| format!("dunes {txid} current transaction"))?
+        .ok_or_not_found(|| format!("lunes {txid} current transaction"))?
         .output
         .into_iter()
         .nth(vout.try_into().unwrap())
-        .ok_or_not_found(|| format!("dunes {vout} current transaction output"))?;
+        .ok_or_not_found(|| format!("lunes {vout} current transaction output"))?;
       let shibes = output.value;
       let script = output.script_pubkey;
 
@@ -1019,8 +1018,8 @@ impl Server {
         };
 
         if let Some(content) = str_content.clone() {
-          let drc20 = DRC20::from_json_string(content.as_str());
-          if drc20.is_some() {
+          let lky20 = LKY20::from_json_string(content.as_str());
+          if lky20.is_some() {
             element_counter = element_counter.checked_sub(1).unwrap_or(0);
             continue;
           }
@@ -1062,31 +1061,31 @@ impl Server {
     )
   }
 
-  async fn dunes_by_address(
+  async fn lunes_by_address(
     Extension(index): Extension<Arc<Index>>,
     Path(params): Path<(String, u32)>,
-    Query(query): Query<DunesBalanceQuery>,
+    Query(query): Query<LunesBalanceQuery>,
   ) -> ServerResult<Response> {
-    Self::get_dunes_by_address(index, params.0, Some(params.1), query).await
+    Self::get_lunes_by_address(index, params.0, Some(params.1), query).await
   }
 
-  async fn dunes_by_address_unpaginated(
+  async fn lunes_by_address_unpaginated(
     Extension(index): Extension<Arc<Index>>,
     Path(params): Path<String>,
-    Query(query): Query<DunesBalanceQuery>,
+    Query(query): Query<LunesBalanceQuery>,
   ) -> ServerResult<Response> {
-    Self::get_dunes_by_address(index, params, None, query).await
+    Self::get_lunes_by_address(index, params, None, query).await
   }
 
-  async fn get_dunes_by_address(
+  async fn get_lunes_by_address(
     index: Arc<Index>,
     address: String,
     page: Option<u32>,
-    query: DunesBalanceQuery,
+    query: LunesBalanceQuery,
   ) -> ServerResult<Response> {
     let (address, page) = (address, page.unwrap_or(0));
     let show_all = query.show_all.unwrap_or(false);
-    let list_dunes = query.list_dunes.unwrap_or(false);
+    let list_lunes = query.list_lunes.unwrap_or(false);
 
     let outpoints = index.get_account_outputs(address)?;
 
@@ -1099,20 +1098,20 @@ impl Server {
     };
     let mut elements_counter = 0;
 
-    let mut dune_balances_map: LinkedHashMap<SpacedDune, DuneBalance> = LinkedHashMap::new();
+    let mut lune_balances_map: LinkedHashMap<SpacedLune, LuneBalance> = LinkedHashMap::new();
 
     for outpoint in outpoints {
-      let dunes = index.get_dune_balances_for_outpoint(outpoint)?;
-      for (dune, balances) in dunes {
+      let lunes = index.get_lune_balances_for_outpoint(outpoint)?;
+      for (lune, balances) in lunes {
         if let Some(filter) = query.filter {
-          if dune != filter {
+          if lune != filter {
             continue;
           }
         }
-        let dune_balance = dune_balances_map
-          .entry(dune.clone())
-          .or_insert_with(|| DuneBalance {
-            dune: dune.clone(),
+        let lune_balance = lune_balances_map
+          .entry(lune.clone())
+          .or_insert_with(|| LuneBalance {
+            lune: lune.clone(),
             divisibility: balances.divisibility,
             symbol: balances.symbol,
             total_balance: 0,
@@ -1120,18 +1119,18 @@ impl Server {
             balances: Vec::new(),
           });
 
-        if !list_dunes {
+        if !list_lunes {
           let txid = outpoint.txid;
           let vout = outpoint.vout;
           let output = index
             .get_transaction(txid)?
-            .ok_or_not_found(|| format!("dunes {txid} current transaction"))?
+            .ok_or_not_found(|| format!("lunes {txid} current transaction"))?
             .output
             .into_iter()
             .nth(vout.try_into().unwrap())
-            .ok_or_not_found(|| format!("dunes {vout} current transaction output"))?;
+            .ok_or_not_found(|| format!("lunes {vout} current transaction output"))?;
 
-          dune_balance.balances.push(DuneOutput {
+          lune_balance.balances.push(LuneOutput {
             txid,
             vout,
             script: output.script_pubkey,
@@ -1140,27 +1139,27 @@ impl Server {
           });
         }
 
-        dune_balance.total_balance += balances.amount;
-        dune_balance.total_outputs += 1;
+        lune_balance.total_balance += balances.amount;
+        lune_balance.total_outputs += 1;
         elements_counter += 1;
       }
     }
 
-    let dune_balances: Vec<DuneBalance> = if show_all {
-      dune_balances_map.values().cloned().collect()
-    } else if list_dunes {
-      dune_balances_map
+    let lune_balances: Vec<LuneBalance> = if show_all {
+      lune_balances_map.values().cloned().collect()
+    } else if list_lunes {
+      lune_balances_map
         .values()
         .cloned()
         .skip(start_index)
         .take(items_per_page)
         .collect()
     } else {
-      let values: Vec<DuneBalance> = dune_balances_map.values().cloned().collect();
+      let values: Vec<LuneBalance> = lune_balances_map.values().cloned().collect();
       let mut items_collected = 0;
       let mut result = Vec::new();
       for value in values.iter() {
-        let balances: Vec<DuneOutput> = value
+        let balances: Vec<LuneOutput> = value
           .balances
           .iter()
           .skip(start_index)
@@ -1172,8 +1171,8 @@ impl Server {
         if balances.is_empty() {
           continue;
         }
-        result.push(DuneBalance {
-          dune: value.dune.clone(),
+        result.push(LuneBalance {
+          lune: value.lune.clone(),
           divisibility: value.divisibility,
           symbol: value.symbol.clone(),
           total_balance: value.total_balance,
@@ -1188,9 +1187,9 @@ impl Server {
     };
 
     Ok(
-      Json(DuneAddressJson {
-        dunes: dune_balances,
-        total_dunes: dune_balances_map.len(),
+      Json(LuneAddressJson {
+        lunes: lune_balances,
+        total_lunes: lune_balances_map.len(),
         total_elements: elements_counter,
       })
       .into_response(),
@@ -1249,14 +1248,14 @@ impl Server {
 
       let inscriptions = index.get_inscriptions_on_output(outpoint)?;
 
-      let dunes = index.get_dune_balances_for_outpoint(outpoint)?;
+      let lunes = index.get_lune_balances_for_outpoint(outpoint)?;
 
       outputs.push(OutputJson::new(
         server_config.chain,
         inscriptions,
         outpoint,
         output,
-        dunes,
+        lunes,
       ))
     }
 
@@ -1265,23 +1264,23 @@ impl Server {
     Ok(outputs_json)
   }
 
-  async fn drc20_tick_info(
+  async fn lky20_tick_info(
     Extension(index): Extension<Arc<Index>>,
     Path(tick): Path<String>,
-    Query(query): Query<Drc20TickInfoQuery>,
+    Query(query): Query<Lky20TickInfoQuery>,
   ) -> Result<Response, ServerError> {
     let tick =
       &Tick::from_str(tick.as_str()).map_err(|err| ServerError::BadRequest(err.to_string()))?;
-    let token_info = index.get_drc20_token_info(&tick.clone())?;
+    let token_info = index.get_lky20_token_info(&tick.clone())?;
 
     if query.show_holder.unwrap_or(false) {
-      let holder = index.get_drc20_token_holder(&tick.clone())?;
+      let holder = index.get_lky20_token_holder(&tick.clone())?;
 
       let mut holder_to_balance: HashMap<String, HolderBalanceForTick> = HashMap::new();
 
       for script_key in holder.clone() {
         if let Some(balance) = index
-          .get_drc20_balance(&script_key, &tick)
+          .get_lky20_balance(&script_key, &tick)
           .map_err(|err| ServerError::BadRequest(err.to_string()))?
         {
           let token_info_clone = token_info.clone().unwrap();
@@ -1320,20 +1319,20 @@ impl Server {
     }
   }
 
-  async fn drc20_tick_holder(
+  async fn lky20_tick_holder(
     Extension(index): Extension<Arc<Index>>,
     Path(tick): Path<String>,
   ) -> Result<Response, ServerError> {
     let tick =
       &Tick::from_str(tick.as_str()).map_err(|err| ServerError::BadRequest(err.to_string()))?;
-    let holder = index.get_drc20_token_holder(&tick.clone())?;
-    let token_info = index.get_drc20_token_info(&tick.clone())?;
+    let holder = index.get_lky20_token_holder(&tick.clone())?;
+    let token_info = index.get_lky20_token_info(&tick.clone())?;
 
     let mut holder_to_balance: HashMap<String, HolderBalanceForTick> = HashMap::new();
 
     for script_key in holder.clone() {
       if let Some(balance) = index
-        .get_drc20_balance(&script_key, &tick)
+        .get_lky20_balance(&script_key, &tick)
         .map_err(|err| ServerError::BadRequest(err.to_string()))
         .unwrap_or(None)
       {
@@ -1369,12 +1368,12 @@ impl Server {
     }
   }
 
-  async fn drc20_all_tick_info(
+  async fn lky20_all_tick_info(
     Extension(index): Extension<Arc<Index>>,
-    Query(query): Query<Drc20TickInfoQuery>,
+    Query(query): Query<Lky20TickInfoQuery>,
   ) -> Result<Response, ServerError> {
     let token_info = index
-      .get_drc20_tokens_info()
+      .get_lky20_tokens_info()
       .map_err(|err| ServerError::BadRequest(err.to_string()))?;
 
     if query.show_holder.unwrap_or(false) {
@@ -1383,14 +1382,14 @@ impl Server {
         .map(|info| {
           let tick = info.tick.clone();
           let holder = index
-            .get_drc20_token_holder(&tick.clone())
+            .get_lky20_token_holder(&tick.clone())
             .unwrap_or(Vec::new());
 
           let mut holder_to_balance: HashMap<String, HolderBalanceForTick> = HashMap::new();
 
           for script_key in holder.clone() {
             if let Some(balance) = index
-              .get_drc20_balance(&script_key, &tick)
+              .get_lky20_balance(&script_key, &tick)
               .map_err(|err| ServerError::BadRequest(err.to_string()))
               .unwrap_or(None)
             {
@@ -1429,11 +1428,11 @@ impl Server {
     }
   }
 
-  async fn drc20_all_ticks(
+  async fn lky20_all_ticks(
     Extension(index): Extension<Arc<Index>>,
   ) -> Result<Response, ServerError> {
     let token_info: Vec<Tick> = index
-      .get_drc20_tokens_info()
+      .get_lky20_tokens_info()
       .map_err(|err| ServerError::BadRequest(err.to_string()))?
       .iter()
       .map(|info| info.tick.clone())
@@ -1442,7 +1441,7 @@ impl Server {
     Ok(Json(token_info).into_response())
   }
 
-  async fn drc20_validate(
+  async fn lky20_validate(
     Extension(index): Extension<Arc<Index>>,
     Extension(server_config): Extension<Arc<PageConfig>>,
     Query(query): Query<ValidityQuery>,
@@ -1497,7 +1496,7 @@ impl Server {
     for (address, inscription_ids) in address_map {
       // Call the function with the list of inscription IDs
       let transferable_logs = index
-        .get_drc20_transferable_by_id(
+        .get_lky20_transferable_by_id(
           &ScriptKey::from_address(address.clone(), index.get_network()?),
           &inscription_ids,
         )
@@ -1537,22 +1536,22 @@ impl Server {
     Ok(RareTxt(index.rare_sat_satpoints()?))
   }
 
-  async fn dune(
+  async fn lune(
     Extension(page_config): Extension<Arc<PageConfig>>,
     Extension(index): Extension<Arc<Index>>,
-    Path(DeserializeFromStr(dune_query)): Path<DeserializeFromStr<query::Dune>>,
+    Path(DeserializeFromStr(lune_query)): Path<DeserializeFromStr<query::Lune>>,
     Query(query): Query<JsonQuery>,
   ) -> ServerResult<Response> {
-    let dune = match dune_query {
-      query::Dune::SpacedDune(spaced_dune) => spaced_dune.dune,
-      query::Dune::DuneId(dune_id) => index
-        .get_dune_by_id(dune_id)?
-        .ok_or_not_found(|| format!("dune {dune_id}"))?,
+    let lune = match lune_query {
+      query::Lune::SpacedLune(spaced_lune) => spaced_lune.lune,
+      query::Lune::LuneId(lune_id) => index
+        .get_lune_by_id(lune_id)?
+        .ok_or_not_found(|| format!("lune {lune_id}"))?,
     };
 
-    let (id, entry) = index.dune(dune)?.ok_or_else(|| {
+    let (id, entry) = index.lune(lune)?.ok_or_else(|| {
       ServerError::NotFound(
-        "tracking dunes requires index created with `--index-dunes` flag".into(),
+        "tracking lunes requires index created with `--index-lunes` flag".into(),
       )
     })?;
 
@@ -1572,7 +1571,7 @@ impl Server {
       .then_some(inscription);
 
     Ok(if !query.json.unwrap_or_default() {
-      DuneHtml {
+      LuneHtml {
         id,
         entry,
         mintable,
@@ -1581,15 +1580,15 @@ impl Server {
       .page(page_config)
       .into_response()
     } else {
-      Json(DuneJson {
-        entry: DuneEntryJson {
+      Json(LuneJson {
+        entry: LuneEntryJson {
           burned: entry.burned,
           divisibility: entry.divisibility,
           etching: entry.etching,
           mint: entry.terms,
           mints: entry.mints,
           number: entry.number,
-          dune: entry.spaced_dune(),
+          lune: entry.spaced_lune(),
           supply: entry.supply,
           symbol: entry.symbol,
           timestamp: entry.timestamp,
@@ -1602,35 +1601,35 @@ impl Server {
     })
   }
 
-  async fn dunes(
+  async fn lunes(
     Extension(page_config): Extension<Arc<PageConfig>>,
     Extension(index): Extension<Arc<Index>>,
-  ) -> ServerResult<PageHtml<DunesHtml>> {
+  ) -> ServerResult<PageHtml<LunesHtml>> {
     Ok(
-      DunesHtml {
-        entries: index.dunes()?,
+      LunesHtml {
+        entries: index.lunes()?,
       }
       .page(page_config),
     )
   }
 
-  async fn dunes_balances(
+  async fn lunes_balances(
     Extension(page_config): Extension<Arc<PageConfig>>,
     Extension(index): Extension<Arc<Index>>,
   ) -> ServerResult<Response> {
-    let balances = index.get_dune_balance_map()?;
+    let balances = index.get_lune_balance_map()?;
     Ok(
-      DuneBalancesHtml { balances }
+      LuneBalancesHtml { balances }
         .page(page_config)
         .into_response(),
     )
   }
 
-  async fn dunes_by_outputs(
+  async fn lunes_by_outputs(
     Extension(index): Extension<Arc<Index>>,
     Query(query): Query<OutputsQuery>,
   ) -> ServerResult<Response> {
-    let mut all_dunes_jsons = Vec::new();
+    let mut all_lunes_jsons = Vec::new();
 
     // Split the outputs string into individual outputs
     let outputs = query.outputs.split(',');
@@ -1651,14 +1650,14 @@ impl Server {
       // Create OutPoint
       let outpoint = OutPoint::new(tx_id, vout);
 
-      let dunes = index.get_dune_balances_for_outpoint(outpoint)?;
+      let lunes = index.get_lune_balances_for_outpoint(outpoint)?;
 
-      for (dune, balances) in dunes {
-        all_dunes_jsons.push(DuneOutputJson { dune, balances });
+      for (lune, balances) in lunes {
+        all_lunes_jsons.push(LuneOutputJson { lune, balances });
       }
     }
 
-    Ok(Json(all_dunes_jsons).into_response())
+    Ok(Json(all_lunes_jsons).into_response())
   }
 
   async fn home(
@@ -1669,7 +1668,7 @@ impl Server {
   }
 
   async fn install_script() -> Redirect {
-    Redirect::to("https://raw.githubusercontent.com/apezord/ord-dogecoin/master/install.sh")
+    Redirect::to("https://raw.githubusercontent.com/toregua/ord-luckycoin/master/install.sh")
   }
 
   async fn block(
@@ -2095,8 +2094,8 @@ impl Server {
       static ref HASH: Regex = Regex::new(r"^[[:xdigit:]]{64}$").unwrap();
       static ref OUTPOINT: Regex = Regex::new(r"^[[:xdigit:]]{64}:\d+$").unwrap();
       static ref INSCRIPTION_ID: Regex = Regex::new(r"^[[:xdigit:]]{64}i\d+$").unwrap();
-      static ref DUNE: Regex = Regex::new(r"^[A-Z•.]+$").unwrap();
-      static ref DUNE_ID: Regex = Regex::new(r"^[0-9]+:[0-9]+$").unwrap();
+      static ref LUNE: Regex = Regex::new(r"^[A-Z•.]+$").unwrap();
+      static ref LUNE_ID: Regex = Regex::new(r"^[0-9]+:[0-9]+$").unwrap();
     }
 
     let query = query.trim();
@@ -2111,16 +2110,16 @@ impl Server {
       Ok(Redirect::to(&format!("/output/{query}")))
     } else if INSCRIPTION_ID.is_match(query) {
       Ok(Redirect::to(&format!("/shibescription/{query}")))
-    } else if DUNE.is_match(query) {
-      Ok(Redirect::to(&format!("/dune/{query}")))
-    } else if DUNE_ID.is_match(query) {
+    } else if LUNE.is_match(query) {
+      Ok(Redirect::to(&format!("/lune/{query}")))
+    } else if LUNE_ID.is_match(query) {
       let id = query
-        .parse::<DuneId>()
+        .parse::<LuneId>()
         .map_err(|err| ServerError::BadRequest(err.to_string()))?;
 
-      let dune = index.get_dune_by_id(id)?.ok_or_not_found(|| "dune ID")?;
+      let lune = index.get_lune_by_id(id)?.ok_or_not_found(|| "lune ID")?;
 
-      Ok(Redirect::to(&format!("/dune/{dune}")))
+      Ok(Redirect::to(&format!("/lune/{lune}")))
     } else {
       Ok(Redirect::to(&format!("/sat/{query}")))
     }
@@ -2442,7 +2441,7 @@ impl Server {
 
     let next = index.get_inscription_id_by_inscription_number(entry.inscription_number + 1)?;
 
-    let dune = index.get_dune_by_inscription_id(inscription_id)?;
+    let lune = index.get_lune_by_inscription_id(inscription_id)?;
 
     if !query.json.unwrap_or_default() {
       Ok(
@@ -2459,7 +2458,7 @@ impl Server {
           sat: entry.sat,
           satpoint,
           timestamp: timestamp(entry.timestamp.into()),
-          dune,
+          lune,
         }
         .page(page_config)
         .into_response(),
@@ -2491,7 +2490,7 @@ impl Server {
           sat: entry.sat,
           satpoint,
           timestamp: Default::default(),
-          dune,
+          lune,
         })
         .into_response(),
       )
@@ -2708,7 +2707,7 @@ impl Server {
           genesis_height: entry.height,
           inscription_id,
           inscription_number: entry.inscription_number,
-          //dune: None,
+          //lune: None,
           timestamp: entry.timestamp,
           tx_id: tx_id.to_string(),
           vout,
@@ -2840,10 +2839,10 @@ mod tests {
 
   use {super::*, reqwest::Url, std::net::TcpListener};
 
-  use crate::dunes::{Dunestone, Edict, Etching};
+  use crate::lunes::{Edict, Etching, Lunestone};
 
   struct TestServer {
-    dogecoin_rpc_server: test_bitcoincore_rpc::Handle,
+    luckycoin_rpc_server: test_bitcoincore_rpc::Handle,
     index: Arc<Index>,
     ord_server_handle: Handle,
     url: Url,
@@ -2864,15 +2863,15 @@ mod tests {
       Self::new_server(test_bitcoincore_rpc::spawn(), None, ord_args, server_args)
     }
 
-    fn new_with_dogecoin_rpc_server_and_config(
-      dogecoin_rpc_server: test_bitcoincore_rpc::Handle,
+    fn new_with_luckycoin_rpc_server_and_config(
+      luckycoin_rpc_server: test_bitcoincore_rpc::Handle,
       config: String,
     ) -> Self {
-      Self::new_server(dogecoin_rpc_server, Some(config), &[], &[])
+      Self::new_server(luckycoin_rpc_server, Some(config), &[], &[])
     }
 
     fn new_server(
-      dogecoin_rpc_server: test_bitcoincore_rpc::Handle,
+      luckycoin_rpc_server: test_bitcoincore_rpc::Handle,
       config: Option<String>,
       ord_args: &[&str],
       server_args: &[&str],
@@ -2902,7 +2901,7 @@ mod tests {
 
       let (options, server) = parse_server_args(&format!(
         "ord --chain regtest --rpc-url {} --cookie-file {} --data-dir {} {config_args} {} server --http-port {} --address 127.0.0.1 {}",
-        dogecoin_rpc_server.url(),
+        luckycoin_rpc_server.url(),
         cookiefile.to_str().unwrap(),
         tempdir.path().to_str().unwrap(),
         ord_args.join(" "),
@@ -2942,7 +2941,7 @@ mod tests {
       }
 
       Self {
-        dogecoin_rpc_server,
+        luckycoin_rpc_server,
         index,
         ord_server_handle,
         tempdir,
@@ -3011,14 +3010,14 @@ mod tests {
     }
 
     fn mine_blocks(&self, n: u64) -> Vec<bitcoin::Block> {
-      let blocks = self.dogecoin_rpc_server.mine_blocks(n);
+      let blocks = self.luckycoin_rpc_server.mine_blocks(n);
       self.index.update().unwrap();
       blocks
     }
 
     fn mine_blocks_with_subsidy(&self, n: u64, subsidy: u64) -> Vec<Block> {
       let blocks = self
-        .dogecoin_rpc_server
+        .luckycoin_rpc_server
         .mine_blocks_with_subsidy(n, subsidy);
       self.index.update().unwrap();
       blocks
@@ -3208,7 +3207,7 @@ mod tests {
   fn install_sh_redirects_to_github() {
     TestServer::new().assert_redirect(
       "/install.sh",
-      "https://raw.githubusercontent.com/apezord/ord-dogecoin/master/install.sh",
+      "https://raw.githubusercontent.com/toregua/ord-luckycoin/master/install.sh",
     );
   }
 
@@ -3233,8 +3232,8 @@ mod tests {
   }
 
   #[test]
-  fn search_by_query_returns_dune() {
-    TestServer::new().assert_redirect("/search?query=ABCD", "/dune/ABCD");
+  fn search_by_query_returns_lune() {
+    TestServer::new().assert_redirect("/search?query=ABCD", "/lune/ABCD");
   }
 
   #[test]
@@ -3288,32 +3287,32 @@ mod tests {
   }
 
   #[test]
-  fn search_by_path_returns_dune() {
-    TestServer::new().assert_redirect("/search/ABCD", "/dune/ABCD");
+  fn search_by_path_returns_lune() {
+    TestServer::new().assert_redirect("/search/ABCD", "/lune/ABCD");
   }
 
   #[test]
-  fn search_by_dune_id_returns_dune() {
-    let server = TestServer::new_with_regtest_with_index_dunes();
+  fn search_by_lune_id_returns_lune() {
+    let server = TestServer::new_with_regtest_with_index_lunes();
 
     server.mine_blocks(1);
 
-    let dune = Dune(u128::from(21_000_000 * COIN_VALUE));
+    let lune = Lune(u128::from(21_000_000 * COIN_VALUE));
 
-    server.assert_response_regex(format!("/dune/{dune}"), StatusCode::NOT_FOUND, ".*");
+    server.assert_response_regex(format!("/lune/{lune}"), StatusCode::NOT_FOUND, ".*");
 
     server.bitcoin_rpc_server.broadcast_tx(TransactionTemplate {
       inputs: &[(1, 0, 0)],
       witness: inscription("text/plain", "hello").to_witness(),
       op_return: Some(
-        Dunestone {
+        Lunestone {
           edicts: vec![Edict {
             id: 0,
             amount: u128::max_value(),
             output: 0,
           }],
           etching: Some(Etching {
-            dune,
+            lune,
             ..Default::default()
           }),
           ..Default::default()
@@ -3325,10 +3324,10 @@ mod tests {
 
     server.mine_blocks(1);
 
-    server.assert_redirect("/search/2/1", "/dune/NVTDIJZYIPU");
-    server.assert_redirect("/search?query=2/1", "/dune/NVTDIJZYIPU");
+    server.assert_redirect("/search/2/1", "/lune/NVTDIJZYIPU");
+    server.assert_redirect("/search?query=2/1", "/lune/NVTDIJZYIPU");
 
-    server.assert_response_regex("/dune/100/200", StatusCode::NOT_FOUND, ".*");
+    server.assert_response_regex("/lune/100/200", StatusCode::NOT_FOUND, ".*");
 
     server.assert_response_regex(
       "/search/100000000000000000000/200000000000000000",
@@ -3578,7 +3577,7 @@ mod tests {
     test_server.assert_response_regex(
     "/",
     StatusCode::OK,
-    ".*<title>Dunes</title>.*
+    ".*<title>Lunes</title>.*
 <h2>Latest Blocks</h2>
 <ol start=1 reversed class=blocks>
   <li><a href=/block/[[:xdigit:]]{64}>[[:xdigit:]]{64}</a></li>
@@ -3592,7 +3591,7 @@ mod tests {
     TestServer::new().assert_response_regex(
       "/",
       StatusCode::OK,
-      ".*<a href=/>Dunes<sup>regtest</sup></a>.*",
+      ".*<a href=/>Lunes<sup>regtest</sup></a>.*",
     );
   }
 
@@ -3664,7 +3663,7 @@ mod tests {
       fee: 0,
       ..Default::default()
     };
-    test_server.dogecoin_rpc_server.broadcast_tx(transaction);
+    test_server.luckycoin_rpc_server.broadcast_tx(transaction);
     let block_hash = test_server.mine_blocks(1)[0].block_hash();
 
     test_server.assert_response_regex(
@@ -3901,7 +3900,7 @@ mod tests {
 
     server.mine_blocks(1);
     server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         outputs: 2,
@@ -3927,7 +3926,7 @@ mod tests {
 
     server.mine_blocks(1);
     server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         outputs: 2,
@@ -3980,7 +3979,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/plain;charset=utf-8", "hello").to_witness(),
@@ -4003,7 +4002,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/plain;charset=utf-8", b"\xc3\x28").to_witness(),
@@ -4025,7 +4024,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription(
@@ -4052,7 +4051,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("audio/flac", "hello").to_witness(),
@@ -4075,7 +4074,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("application/pdf", "hello").to_witness(),
@@ -4098,7 +4097,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("image/png", "hello").to_witness(),
@@ -4122,7 +4121,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/html;charset=utf-8", "hello").to_witness(),
@@ -4145,7 +4144,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/foo", "hello").to_witness(),
@@ -4168,7 +4167,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("video/webm", "hello").to_witness(),
@@ -4191,7 +4190,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/foo", "hello").to_witness(),
@@ -4213,7 +4212,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/foo", "hello").to_witness(),
@@ -4235,7 +4234,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/foo", "hello").to_witness(),
@@ -4269,7 +4268,7 @@ mod tests {
     server.mine_blocks(1);
 
     server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/foo", "hello").to_witness(),
@@ -4291,7 +4290,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: Inscription::new(Some("foo/bar".as_bytes().to_vec()), None).to_witness(),
@@ -4315,7 +4314,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: Inscription::new(Some("image/png".as_bytes().to_vec()), None).to_witness(),
@@ -4339,7 +4338,7 @@ mod tests {
     server.mine_blocks(1);
 
     let txid = server
-      .dogecoin_rpc_server
+      .luckycoin_rpc_server
       .broadcast_tx(TransactionTemplate {
         inputs: &[(1, 0, 0)],
         witness: inscription("text/foo", "hello").to_witness(),
@@ -4373,7 +4372,7 @@ mod tests {
     for i in 0..101 {
       server.mine_blocks(1);
       server
-        .dogecoin_rpc_server
+        .luckycoin_rpc_server
         .broadcast_tx(TransactionTemplate {
           inputs: &[(i + 1, 0, 0)],
           witness: inscription("text/foo", "hello").to_witness(),
@@ -4397,7 +4396,7 @@ mod tests {
     for i in 0..101 {
       server.mine_blocks(1);
       server
-        .dogecoin_rpc_server
+        .luckycoin_rpc_server
         .broadcast_tx(TransactionTemplate {
           inputs: &[(i + 1, 0, 0)],
           witness: inscription("text/foo", "hello").to_witness(),
@@ -4460,18 +4459,18 @@ mod tests {
 
   #[test]
   fn inscriptions_can_be_hidden_with_config() {
-    let dogecoin_rpc_server = test_bitcoincore_rpc::spawn();
-    dogecoin_rpc_server.mine_blocks(1);
-    let txid = dogecoin_rpc_server.broadcast_tx(TransactionTemplate {
+    let luckycoin_rpc_server = test_bitcoincore_rpc::spawn();
+    luckycoin_rpc_server.mine_blocks(1);
+    let txid = luckycoin_rpc_server.broadcast_tx(TransactionTemplate {
       inputs: &[(1, 0, 0)],
       witness: inscription("text/plain;charset=utf-8", "hello").to_witness(),
       ..Default::default()
     });
     let inscription = InscriptionId::from(txid);
-    dogecoin_rpc_server.mine_blocks(1);
+    luckycoin_rpc_server.mine_blocks(1);
 
-    let server = TestServer::new_with_dogecoin_rpc_server_and_config(
-      dogecoin_rpc_server,
+    let server = TestServer::new_with_luckycoin_rpc_server_and_config(
+      luckycoin_rpc_server,
       format!("\"hidden\":\n - {inscription}"),
     );
 

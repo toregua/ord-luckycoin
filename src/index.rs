@@ -1,18 +1,20 @@
 use {
   self::{
-    dunes::{Dune, DuneId},
     entry::{
-      BlockHashValue, DuneEntryValue, DuneIdValue, Entry, InscriptionEntry, InscriptionEntryValue,
-      InscriptionIdValue, OutPointMapValue, OutPointValue, SatPointValue, SatRange, TxidValue,
+      BlockHashValue, Entry, InscriptionEntry, InscriptionEntryValue, InscriptionIdValue,
+      LuneEntryValue, LuneIdValue, OutPointMapValue, OutPointValue, SatPointValue, SatRange,
+      TxidValue,
     },
+    lunes::{Lune, LuneId},
     reorg::*,
     updater::Updater,
   },
-  bitcoin::BlockHeader,
-  bitcoincore_rpc::{Auth, Client, json::GetBlockHeaderResult},
-  chrono::SubsecRound,
+  super::*,
   crate::inscription::ParsedInscription,
   crate::wallet::Wallet,
+  bitcoin::BlockHeader,
+  bitcoincore_rpc::{json::GetBlockHeaderResult, Auth, Client},
+  chrono::SubsecRound,
   indicatif::{ProgressBar, ProgressStyle},
   log::log_enabled,
   redb::{
@@ -22,21 +24,23 @@ use {
   std::collections::HashMap,
   std::io::Cursor,
   std::sync::atomic::{self, AtomicBool},
-  super::*,
   url::Url,
 };
 
-use crate::drc20::{Balance, max_script_tick_key, min_script_tick_key, script_tick_key, Tick, TokenInfo, TransferableLog, min_script_tick_id_key, max_script_tick_id_key};
-use crate::drc20::script_key::ScriptKey;
+use crate::lky20::script_key::ScriptKey;
+use crate::lky20::{
+  max_script_tick_id_key, max_script_tick_key, min_script_tick_id_key, min_script_tick_key,
+  script_tick_key, Balance, Tick, TokenInfo, TransferableLog,
+};
 use crate::sat::Sat;
 use crate::sat_point::SatPoint;
 use crate::templates::BlockHashAndConfirmations;
 
-pub(crate) use self::entry::DuneEntry;
+pub(crate) use self::entry::LuneEntry;
 
 pub(crate) mod entry;
-mod reorg;
 mod fetcher;
+mod reorg;
 mod rtx;
 mod updater;
 
@@ -57,30 +61,30 @@ macro_rules! define_multimap_table {
 
 define_table! { HEIGHT_TO_BLOCK_HASH, u32, &BlockHashValue }
 define_table! { INSCRIPTION_ID_TO_INSCRIPTION_ENTRY, &InscriptionIdValue, InscriptionEntryValue }
-define_table! { INSCRIPTION_ID_TO_DUNE, &InscriptionIdValue, u128 }
+define_table! { INSCRIPTION_ID_TO_LUNE, &InscriptionIdValue, u128 }
 define_table! { INSCRIPTION_ID_TO_SATPOINT, &InscriptionIdValue, &SatPointValue }
 define_table! { INSCRIPTION_NUMBER_TO_INSCRIPTION_ID, u64, &InscriptionIdValue }
-define_table! { OUTPOINT_TO_DUNE_BALANCES, &OutPointValue, &[u8] }
+define_table! { OUTPOINT_TO_LUNE_BALANCES, &OutPointValue, &[u8] }
 define_table! { INSCRIPTION_ID_TO_TXIDS, &InscriptionIdValue, &[u8] }
 define_table! { INSCRIPTION_TXID_TO_TX, &[u8], &[u8] }
 define_table! { PARTIAL_TXID_TO_INSCRIPTION_TXIDS, &[u8], &[u8] }
 define_table! { OUTPOINT_TO_SAT_RANGES, &OutPointValue, &[u8] }
 define_table! { OUTPOINT_TO_VALUE, &OutPointValue, u64}
 define_multimap_table! { ADDRESS_TO_OUTPOINT, &[u8], &OutPointValue}
-define_table! { DUNE_ID_TO_DUNE_ENTRY, DuneIdValue, DuneEntryValue }
-define_table! { DUNE_TO_DUNE_ID, u128, DuneIdValue }
+define_table! { LUNE_ID_TO_LUNE_ENTRY, LuneIdValue, LuneEntryValue }
+define_table! { LUNE_TO_LUNE_ID, u128, LuneIdValue }
 define_table! { SATPOINT_TO_INSCRIPTION_ID, &SatPointValue, &InscriptionIdValue }
 define_table! { SAT_TO_INSCRIPTION_ID, u64, &InscriptionIdValue }
 define_table! { SAT_TO_SATPOINT, u64, &SatPointValue }
 define_table! { STATISTIC_TO_COUNT, u64, u64 }
-define_table! { TRANSACTION_ID_TO_DUNE, &TxidValue, u128 }
+define_table! { TRANSACTION_ID_TO_LUNE, &TxidValue, u128 }
 define_table! { TRANSACTION_ID_TO_TRANSACTION, &TxidValue, &[u8] }
 define_table! { WRITE_TRANSACTION_STARTING_BLOCK_COUNT_TO_TIMESTAMP, u32, u128 }
-define_table! { DRC20_BALANCES, &str, &[u8] }
-define_table! { DRC20_TOKEN, &str, &[u8] }
-define_table! { DRC20_INSCRIBE_TRANSFER, &InscriptionIdValue, &[u8] }
-define_table! { DRC20_TRANSFERABLELOG, &str, &[u8] }
-define_multimap_table! { DRC20_TOKEN_HOLDER, &str, &str}
+define_table! { LKY20_BALANCES, &str, &[u8] }
+define_table! { LKY20_TOKEN, &str, &[u8] }
+define_table! { LKY20_INSCRIBE_TRANSFER, &InscriptionIdValue, &[u8] }
+define_table! { LKY20_TRANSFERABLELOG, &str, &[u8] }
+define_multimap_table! { LKY20_TOKEN_HOLDER, &str, &str}
 
 pub(crate) struct Index {
   auth: Auth,
@@ -88,12 +92,12 @@ pub(crate) struct Index {
   database: Database,
   path: PathBuf,
   first_inscription_height: u32,
-  first_dune_height: u32,
+  first_lune_height: u32,
   genesis_block_coinbase_transaction: Transaction,
   genesis_block_coinbase_txid: Txid,
   height_limit: Option<u32>,
-  index_drc20: bool,
-  index_dunes: bool,
+  index_lky20: bool,
+  index_lunes: bool,
   index_sats: bool,
   index_transactions: bool,
   unrecoverably_reorged: AtomicBool,
@@ -112,13 +116,13 @@ pub(crate) enum List {
 #[repr(u64)]
 pub(crate) enum Statistic {
   Commits,
-  IndexDrc20,
-  IndexDunes,
+  IndexLky20,
+  IndexLunes,
   IndexSats,
   LostSats,
   OutputsTraversed,
-  ReservedDunes,
-  Dunes,
+  ReservedLunes,
+  Lunes,
   SatRanges,
   Schema,
   IndexTransactions,
@@ -195,13 +199,13 @@ impl Index {
       let password = url.password().map(|x| x.to_string()).unwrap_or_default();
 
       log::info!(
-        "Connecting to Dogecoin Core RPC server at {rpc_url} using credentials from the url"
+        "Connecting to Luckycoin Core RPC server at {rpc_url} using credentials from the url"
       );
 
       Auth::UserPass(username, password)
     } else {
       log::info!(
-        "Connecting to Dogecoin Core RPC server at {rpc_url} using credentials from `{}`",
+        "Connecting to Luckycoin Core RPC server at {rpc_url} using credentials from `{}`",
         cookie_file.display()
       );
 
@@ -222,8 +226,8 @@ impl Index {
       data_dir.join("index.redb")
     };
 
-    let index_drc20;
-    let index_dunes;
+    let index_lky20;
+    let index_lunes;
     let index_sats;
     let index_transactions;
 
@@ -253,8 +257,8 @@ impl Index {
 
           let statistics = tx.open_table(STATISTIC_TO_COUNT)?;
 
-          index_dunes = statistics
-            .get(&Statistic::IndexDunes.key())?
+          index_lunes = statistics
+            .get(&Statistic::IndexLunes.key())?
             .unwrap()
             .value()
             != 0;
@@ -268,8 +272,8 @@ impl Index {
             .unwrap()
             .value()
             != 0;
-          index_drc20 = statistics
-            .get(&Statistic::IndexDrc20.key())?
+          index_lky20 = statistics
+            .get(&Statistic::IndexLky20.key())?
             .unwrap()
             .value()
             != 0;
@@ -304,7 +308,7 @@ impl Index {
 
         tx.open_table(HEIGHT_TO_BLOCK_HASH)?;
         tx.open_table(INSCRIPTION_ID_TO_INSCRIPTION_ENTRY)?;
-        tx.open_table(INSCRIPTION_ID_TO_DUNE)?;
+        tx.open_table(INSCRIPTION_ID_TO_LUNE)?;
         tx.open_table(INSCRIPTION_ID_TO_SATPOINT)?;
         tx.open_table(INSCRIPTION_NUMBER_TO_INSCRIPTION_ID)?;
         tx.open_table(INSCRIPTION_ID_TO_TXIDS)?;
@@ -325,14 +329,14 @@ impl Index {
             outpoint_to_sat_ranges.insert(&OutPoint::null().store(), [].as_slice())?;
           }
 
-          index_drc20 = options.index_dunes();
-          index_dunes = options.index_dunes();
+          index_lky20 = options.index_lunes();
+          index_lunes = options.index_lunes();
           index_sats = options.index_sats;
           index_transactions = options.index_transactions;
 
-          statistics.insert(&Statistic::IndexDrc20.key(), &u64::from(index_drc20))?;
+          statistics.insert(&Statistic::IndexLky20.key(), &u64::from(index_lky20))?;
 
-          statistics.insert(&Statistic::IndexDunes.key(), &u64::from(index_dunes))?;
+          statistics.insert(&Statistic::IndexLunes.key(), &u64::from(index_lunes))?;
 
           statistics.insert(&Statistic::IndexSats.key(), &u64::from(index_sats))?;
 
@@ -361,11 +365,11 @@ impl Index {
       database,
       path,
       first_inscription_height: options.first_inscription_height(),
-      first_dune_height: options.first_dune_height(),
+      first_lune_height: options.first_lune_height(),
       genesis_block_coinbase_transaction,
       height_limit: options.height_limit,
-      index_drc20,
-      index_dunes,
+      index_lky20,
+      index_lunes,
       index_sats,
       index_transactions,
       unrecoverably_reorged: AtomicBool::new(false),
@@ -410,7 +414,7 @@ impl Index {
     for outpoint in utxos.keys() {
       if outpoint_to_value.get(&outpoint.store())?.is_none() {
         return Err(anyhow!(
-          "output in Dogecoin Core wallet but not in ord index: {outpoint}"
+          "output in Luckycoin Core wallet but not in ord index: {outpoint}"
         ));
       }
     }
@@ -433,8 +437,8 @@ impl Index {
       .collect()
   }
 
-  pub(crate) fn has_dune_index(&self) -> bool {
-    self.index_dunes
+  pub(crate) fn has_lune_index(&self) -> bool {
+    self.index_lunes
   }
 
   pub(crate) fn has_sat_index(&self) -> bool {
@@ -505,22 +509,22 @@ impl Index {
         Err(err) => {
           log::info!("{}", err.to_string());
 
-            match err.downcast_ref() {
-              Some(&ReorgError::Recoverable { height, depth }) => {
-                Reorg::handle_reorg(self, height, depth)?;
+          match err.downcast_ref() {
+            Some(&ReorgError::Recoverable { height, depth }) => {
+              Reorg::handle_reorg(self, height, depth)?;
 
-                updater = Updater::new(self)?;
-              }
-              Some(&ReorgError::Unrecoverable) => {
-                self
-                  .unrecoverably_reorged
-                  .store(true, atomic::Ordering::Relaxed);
-                return Err(anyhow!(ReorgError::Unrecoverable));
-              }
-              _ => return Err(err),
-            };
-          }
+              updater = Updater::new(self)?;
+            }
+            Some(&ReorgError::Unrecoverable) => {
+              self
+                .unrecoverably_reorged
+                .store(true, atomic::Ordering::Relaxed);
+              return Err(anyhow!(ReorgError::Unrecoverable));
+            }
+            _ => return Err(err),
+          };
         }
+      }
     }
   }
 
@@ -628,52 +632,52 @@ impl Index {
     )
   }
 
-  pub(crate) fn get_dune_by_id(&self, id: DuneId) -> Result<Option<Dune>> {
+  pub(crate) fn get_lune_by_id(&self, id: LuneId) -> Result<Option<Lune>> {
     Ok(
       self
         .database
         .begin_read()?
-        .open_table(DUNE_ID_TO_DUNE_ENTRY)?
+        .open_table(LUNE_ID_TO_LUNE_ENTRY)?
         .get(&id.store())?
-        .map(|entry| DuneEntry::load(entry.value()).dune),
+        .map(|entry| LuneEntry::load(entry.value()).lune),
     )
   }
 
-  pub(crate) fn dune(&self, dune: Dune) -> Result<Option<(DuneId, DuneEntry)>> {
+  pub(crate) fn lune(&self, lune: Lune) -> Result<Option<(LuneId, LuneEntry)>> {
     let rtx = self.database.begin_read()?;
 
-    let entry = match rtx.open_table(DUNE_TO_DUNE_ID)?.get(dune.0)? {
+    let entry = match rtx.open_table(LUNE_TO_LUNE_ID)?.get(lune.0)? {
       Some(id) => rtx
-        .open_table(DUNE_ID_TO_DUNE_ENTRY)?
+        .open_table(LUNE_ID_TO_LUNE_ENTRY)?
         .get(id.value())?
-        .map(|entry| (DuneId::load(id.value()), DuneEntry::load(entry.value()))),
+        .map(|entry| (LuneId::load(id.value()), LuneEntry::load(entry.value()))),
       None => None,
     };
 
     Ok(entry)
   }
 
-  pub(crate) fn dunes(&self) -> Result<Vec<(DuneId, DuneEntry)>> {
+  pub(crate) fn lunes(&self) -> Result<Vec<(LuneId, LuneEntry)>> {
     let mut entries = Vec::new();
 
     for result in self
       .database
       .begin_read()?
-      .open_table(DUNE_ID_TO_DUNE_ENTRY)?
+      .open_table(LUNE_ID_TO_LUNE_ENTRY)?
       .iter()?
     {
       let (id, entry) = result?;
-      entries.push((DuneId::load(id.value()), DuneEntry::load(entry.value())));
+      entries.push((LuneId::load(id.value()), LuneEntry::load(entry.value())));
     }
 
     Ok(entries)
   }
 
-  pub(crate) fn get_dune_balance(&self, outpoint: OutPoint, id: DuneId) -> Result<u128> {
-    if self.block_count()? >= self.first_dune_height && self.index_dunes {
+  pub(crate) fn get_lune_balance(&self, outpoint: OutPoint, id: LuneId) -> Result<u128> {
+    if self.block_count()? >= self.first_lune_height && self.index_lunes {
       let rtx = self.database.begin_read()?;
 
-      let outpoint_to_balances = rtx.open_table(OUTPOINT_TO_DUNE_BALANCES)?;
+      let outpoint_to_balances = rtx.open_table(OUTPOINT_TO_LUNE_BALANCES)?;
 
       let Some(balances) = outpoint_to_balances.get(&outpoint.store())? else {
         return Ok(0);
@@ -683,12 +687,12 @@ impl Index {
 
       let mut i = 0;
       while i < balances_buffer.len() {
-        let (balance_id, length) = dunes::varint::decode(&balances_buffer[i..]);
+        let (balance_id, length) = lunes::varint::decode(&balances_buffer[i..]);
         i += length;
-        let (amount, length) = dunes::varint::decode(&balances_buffer[i..]);
+        let (amount, length) = lunes::varint::decode(&balances_buffer[i..]);
         i += length;
 
-        if DuneId::try_from(balance_id).unwrap() == id {
+        if LuneId::try_from(balance_id).unwrap() == id {
           return Ok(amount);
         }
       }
@@ -696,16 +700,16 @@ impl Index {
     Ok(0)
   }
 
-  pub(crate) fn get_dune_balances_for_outpoint(
+  pub(crate) fn get_lune_balances_for_outpoint(
     &self,
     outpoint: OutPoint,
-  ) -> Result<Vec<(SpacedDune, Pile)>> {
-    if self.block_count()? >= self.first_dune_height && self.index_dunes {
+  ) -> Result<Vec<(SpacedLune, Pile)>> {
+    if self.block_count()? >= self.first_lune_height && self.index_lunes {
       let rtx = &self.database.begin_read()?;
 
-      let outpoint_to_balances = rtx.open_table(OUTPOINT_TO_DUNE_BALANCES)?;
+      let outpoint_to_balances = rtx.open_table(OUTPOINT_TO_LUNE_BALANCES)?;
 
-      let id_to_dune_entries = rtx.open_table(DUNE_ID_TO_DUNE_ENTRY)?;
+      let id_to_lune_entries = rtx.open_table(LUNE_ID_TO_LUNE_ENTRY)?;
 
       let Some(balances) = outpoint_to_balances.get(&outpoint.store())? else {
         return Ok(Vec::new());
@@ -716,17 +720,17 @@ impl Index {
       let mut balances = Vec::new();
       let mut i = 0;
       while i < balances_buffer.len() {
-        let (id, length) = dunes::varint::decode(&balances_buffer[i..]);
+        let (id, length) = lunes::varint::decode(&balances_buffer[i..]);
         i += length;
-        let (amount, length) = dunes::varint::decode(&balances_buffer[i..]);
+        let (amount, length) = lunes::varint::decode(&balances_buffer[i..]);
         i += length;
 
-        let id = DuneId::try_from(id).unwrap();
+        let id = LuneId::try_from(id).unwrap();
 
-        let entry = DuneEntry::load(id_to_dune_entries.get(id.store())?.unwrap().value());
+        let entry = LuneEntry::load(id_to_lune_entries.get(id.store())?.unwrap().value());
 
         balances.push((
-          entry.spaced_dune(),
+          entry.spaced_lune(),
           Pile {
             amount,
             divisibility: entry.divisibility,
@@ -741,10 +745,10 @@ impl Index {
   }
 
   pub(crate) fn get_dunic_outputs(&self, outpoints: &[OutPoint]) -> Result<BTreeSet<OutPoint>> {
-    if self.block_count()? >= self.first_dune_height && self.index_dunes {
+    if self.block_count()? >= self.first_lune_height && self.index_lunes {
       let rtx = self.database.begin_read()?;
 
-      let outpoint_to_balances = rtx.open_table(OUTPOINT_TO_DUNE_BALANCES)?;
+      let outpoint_to_balances = rtx.open_table(OUTPOINT_TO_LUNE_BALANCES)?;
 
       let mut dunic = BTreeSet::new();
 
@@ -760,46 +764,46 @@ impl Index {
     }
   }
 
-  pub(crate) fn get_dune_balance_map(
+  pub(crate) fn get_lune_balance_map(
     &self,
-  ) -> Result<BTreeMap<SpacedDune, BTreeMap<OutPoint, u128>>> {
-    let outpoint_balances = self.get_dune_balances()?;
+  ) -> Result<BTreeMap<SpacedLune, BTreeMap<OutPoint, u128>>> {
+    let outpoint_balances = self.get_lune_balances()?;
 
     let rtx = self.database.begin_read()?;
 
-    let dune_id_to_dune_entry = rtx.open_table(DUNE_ID_TO_DUNE_ENTRY)?;
+    let lune_id_to_lune_entry = rtx.open_table(LUNE_ID_TO_LUNE_ENTRY)?;
 
-    let mut dune_balances: BTreeMap<SpacedDune, BTreeMap<OutPoint, u128>> = BTreeMap::new();
+    let mut lune_balances: BTreeMap<SpacedLune, BTreeMap<OutPoint, u128>> = BTreeMap::new();
 
     for (outpoint, balances) in outpoint_balances {
-      for (dune_id, amount) in balances {
-        let spaced_dune = DuneEntry::load(
-          dune_id_to_dune_entry
-            .get(&dune_id.store())?
+      for (lune_id, amount) in balances {
+        let spaced_lune = LuneEntry::load(
+          lune_id_to_lune_entry
+            .get(&lune_id.store())?
             .unwrap()
             .value(),
         )
-        .spaced_dune();
+        .spaced_lune();
 
-        *dune_balances
-          .entry(spaced_dune)
+        *lune_balances
+          .entry(spaced_lune)
           .or_default()
           .entry(outpoint)
           .or_default() += amount;
       }
     }
 
-    Ok(dune_balances)
+    Ok(lune_balances)
   }
 
-  pub(crate) fn get_dune_balances(&self) -> Result<Vec<(OutPoint, Vec<(DuneId, u128)>)>> {
+  pub(crate) fn get_lune_balances(&self) -> Result<Vec<(OutPoint, Vec<(LuneId, u128)>)>> {
     let mut result = Vec::new();
 
-    if self.block_count()? >= self.first_dune_height && self.index_dunes {
+    if self.block_count()? >= self.first_lune_height && self.index_lunes {
       for entry in self
         .database
         .begin_read()?
-        .open_table(OUTPOINT_TO_DUNE_BALANCES)?
+        .open_table(OUTPOINT_TO_LUNE_BALANCES)?
         .iter()?
       {
         let (outpoint, balances_buffer) = entry?;
@@ -809,11 +813,11 @@ impl Index {
         let mut balances = Vec::new();
         let mut i = 0;
         while i < balances_buffer.len() {
-          let (id, length) = dunes::varint::decode(&balances_buffer[i..]);
+          let (id, length) = lunes::varint::decode(&balances_buffer[i..]);
           i += length;
-          let (balance, length) = dunes::varint::decode(&balances_buffer[i..]);
+          let (balance, length) = lunes::varint::decode(&balances_buffer[i..]);
           i += length;
-          balances.push((DuneId::try_from(id)?, balance));
+          balances.push((LuneId::try_from(id)?, balance));
         }
 
         result.push((outpoint, balances));
@@ -888,14 +892,14 @@ impl Index {
     self.client.get_block(&hash).into_option()
   }
 
-  pub(crate) fn get_drc20_balances(&self, script_key: &ScriptKey) -> Result<Vec<Balance>> {
+  pub(crate) fn get_lky20_balances(&self, script_key: &ScriptKey) -> Result<Vec<Balance>> {
     if self.block_count().unwrap() >= self.first_inscription_height {
       let rtx = self.database.begin_read()?;
 
-      let drc20_token_balance = rtx.open_table(DRC20_BALANCES)?;
+      let lky20_token_balance = rtx.open_table(LKY20_BALANCES)?;
 
       return Ok(
-        drc20_token_balance
+        lky20_token_balance
           .range(
             min_script_tick_key(script_key).as_str()..max_script_tick_key(script_key).as_str(),
           )?
@@ -909,7 +913,7 @@ impl Index {
     }
   }
 
-  pub(crate) fn get_drc20_balance(
+  pub(crate) fn get_lky20_balance(
     &self,
     script_key: &ScriptKey,
     tick: &Tick,
@@ -917,10 +921,10 @@ impl Index {
     if self.block_count().unwrap() >= self.first_inscription_height {
       let rtx = self.database.begin_read()?;
 
-      let drc20_token_balance = rtx.open_table(DRC20_BALANCES)?;
+      let lky20_token_balance = rtx.open_table(LKY20_BALANCES)?;
 
       return Ok(
-        drc20_token_balance
+        lky20_token_balance
           .get(script_tick_key(script_key, tick).as_str())?
           .map(|v| bincode::deserialize::<Balance>(v.value()).unwrap()),
       );
@@ -929,13 +933,13 @@ impl Index {
     }
   }
 
-  pub(crate) fn get_drc20_token_info(&self, tick: &Tick) -> Result<Option<TokenInfo>> {
+  pub(crate) fn get_lky20_token_info(&self, tick: &Tick) -> Result<Option<TokenInfo>> {
     if self.block_count().unwrap() >= self.first_inscription_height {
       let rtx = self.database.begin_read()?;
 
-      let drc20_token_info = rtx.open_table(DRC20_TOKEN)?;
+      let lky20_token_info = rtx.open_table(LKY20_TOKEN)?;
       return Ok(
-        drc20_token_info
+        lky20_token_info
           .get(tick.to_lowercase().hex().as_str())?
           .map(|v| bincode::deserialize::<TokenInfo>(v.value()).unwrap()),
       );
@@ -944,13 +948,13 @@ impl Index {
     }
   }
 
-  pub(crate) fn get_drc20_tokens_info(&self) -> Result<Vec<TokenInfo>> {
+  pub(crate) fn get_lky20_tokens_info(&self) -> Result<Vec<TokenInfo>> {
     if self.block_count().unwrap() >= self.first_inscription_height {
       let rtx = self.database.begin_read()?;
 
-      let drc20_token_info = rtx.open_table(DRC20_TOKEN)?;
+      let lky20_token_info = rtx.open_table(LKY20_TOKEN)?;
       return Ok(
-        drc20_token_info
+        lky20_token_info
           .range::<&str>(..)?
           .flat_map(|result| {
             result.map(|(_, data)| bincode::deserialize::<TokenInfo>(data.value()).unwrap())
@@ -962,19 +966,19 @@ impl Index {
     }
   }
 
-  pub(crate) fn get_drc20_token_holder(&self, tick: &Tick) -> Result<Vec<ScriptKey>> {
+  pub(crate) fn get_lky20_token_holder(&self, tick: &Tick) -> Result<Vec<ScriptKey>> {
     if self.block_count().unwrap() >= self.first_inscription_height {
       let rtx = self.database.begin_read()?;
 
-      let drc20_token_holder = rtx.open_multimap_table(DRC20_TOKEN_HOLDER)?;
+      let lky20_token_holder = rtx.open_multimap_table(LKY20_TOKEN_HOLDER)?;
 
       return Ok(
-        drc20_token_holder
+        lky20_token_holder
           .get(tick.to_lowercase().hex().as_str())?
           .flat_map(|result| {
-            result.into_iter().filter_map(|(scriptKey)| {
-              ScriptKey::from_str(scriptKey.value(), self.chain.network())
-            })
+            result
+              .into_iter()
+              .filter_map(|scriptKey| ScriptKey::from_str(scriptKey.value(), self.chain.network()))
           })
           .collect(),
       );
@@ -983,14 +987,14 @@ impl Index {
     }
   }
 
-  pub(crate) fn get_drc20_transferable_by_range(
+  pub(crate) fn get_lky20_transferable_by_range(
     &self,
     script: &ScriptKey,
   ) -> Result<Vec<TransferableLog>, redb::Error> {
     let rtx = self.database.begin_read()?;
-    let drc20_transferable_log = rtx.open_table(DRC20_TRANSFERABLELOG)?;
+    let lky20_transferable_log = rtx.open_table(LKY20_TRANSFERABLELOG)?;
     let result = Ok(
-      drc20_transferable_log
+      lky20_transferable_log
         .range(min_script_tick_key(script).as_str()..max_script_tick_key(script).as_str())?
         .flat_map(|result| {
           result.map(|(_, v)| rmp_serde::from_slice::<TransferableLog>(v.value()).unwrap())
@@ -1001,15 +1005,15 @@ impl Index {
     result
   }
 
-  pub(crate) fn get_drc20_transferable_by_tick(
+  pub(crate) fn get_lky20_transferable_by_tick(
     &self,
     script: &ScriptKey,
     tick: &Tick,
   ) -> Result<Vec<TransferableLog>, redb::Error> {
     let rtx = self.database.begin_read()?;
-    let drc20_transferable_log = rtx.open_table(DRC20_TRANSFERABLELOG)?;
+    let lky20_transferable_log = rtx.open_table(LKY20_TRANSFERABLELOG)?;
     let result = Ok(
-      drc20_transferable_log
+      lky20_transferable_log
         .range(
           min_script_tick_id_key(script, tick).as_str()
             ..max_script_tick_id_key(script, tick).as_str(),
@@ -1023,7 +1027,7 @@ impl Index {
     result
   }
 
-  pub(crate) fn get_drc20_transferable_by_id(
+  pub(crate) fn get_lky20_transferable_by_id(
     &self,
     script_key: &ScriptKey,
     inscription_ids: &[InscriptionId],
@@ -1031,9 +1035,9 @@ impl Index {
     if self.block_count().unwrap() >= self.first_inscription_height {
       let rtx = self.database.begin_read()?;
 
-      let drc20_transferable_log = rtx.open_table(DRC20_TRANSFERABLELOG)?;
+      let lky20_transferable_log = rtx.open_table(LKY20_TRANSFERABLELOG)?;
 
-      let transferable_log_vec: Vec<TransferableLog> = drc20_transferable_log
+      let transferable_log_vec: Vec<TransferableLog> = lky20_transferable_log
         .range(min_script_tick_key(script_key).as_str()..max_script_tick_key(script_key).as_str())?
         .flat_map(|result| {
           result.map(|(_, v)| rmp_serde::from_slice::<TransferableLog>(v.value()).unwrap())
@@ -1057,22 +1061,22 @@ impl Index {
     }
   }
 
-  pub(crate) fn get_etching(&self, txid: Txid) -> Result<Option<SpacedDune>> {
-    if self.block_count().unwrap() >= self.first_dune_height {
+  pub(crate) fn get_etching(&self, txid: Txid) -> Result<Option<SpacedLune>> {
+    if self.block_count().unwrap() >= self.first_lune_height {
       let rtx = self.database.begin_read()?;
 
-      let transaction_id_to_dune = rtx.open_table(TRANSACTION_ID_TO_DUNE)?;
-      let Some(dune) = transaction_id_to_dune.get(&txid.store())? else {
+      let transaction_id_to_lune = rtx.open_table(TRANSACTION_ID_TO_LUNE)?;
+      let Some(lune) = transaction_id_to_lune.get(&txid.store())? else {
         return Ok(None);
       };
 
-      let dune_to_dune_id = rtx.open_table(DUNE_TO_DUNE_ID)?;
-      let id = dune_to_dune_id.get(dune.value())?.unwrap();
+      let lune_to_lune_id = rtx.open_table(LUNE_TO_LUNE_ID)?;
+      let id = lune_to_lune_id.get(lune.value())?.unwrap();
 
-      let dune_id_to_dune_entry = rtx.open_table(DUNE_ID_TO_DUNE_ENTRY)?;
-      let entry = dune_id_to_dune_entry.get(&id.value())?.unwrap();
+      let lune_id_to_lune_entry = rtx.open_table(LUNE_ID_TO_LUNE_ENTRY)?;
+      let entry = lune_id_to_lune_entry.get(&id.value())?.unwrap();
 
-      Ok(Some(DuneEntry::load(entry.value()).spaced_dune()))
+      Ok(Some(LuneEntry::load(entry.value()).spaced_lune()))
     } else {
       Ok(None)
     }
@@ -1089,25 +1093,25 @@ impl Index {
     )
   }
 
-  pub(crate) fn get_dune_by_inscription_id(
+  pub(crate) fn get_lune_by_inscription_id(
     &self,
     inscription_id: InscriptionId,
-  ) -> Result<Option<SpacedDune>> {
+  ) -> Result<Option<SpacedLune>> {
     let rtx = self.database.begin_read()?;
-    let Some(dune) = rtx
-      .open_table(INSCRIPTION_ID_TO_DUNE)?
+    let Some(lune) = rtx
+      .open_table(INSCRIPTION_ID_TO_LUNE)?
       .get(&inscription_id.store())?
-      .map(|entry| Dune(entry.value()))
+      .map(|entry| Lune(entry.value()))
     else {
       return Ok(None);
     };
-    let dune_to_dune_id = rtx.open_table(DUNE_TO_DUNE_ID)?;
-    let id = dune_to_dune_id.get(dune.0)?.unwrap();
+    let lune_to_lune_id = rtx.open_table(LUNE_TO_LUNE_ID)?;
+    let id = lune_to_lune_id.get(lune.0)?.unwrap();
 
-    let dune_id_to_dune_entry = rtx.open_table(DUNE_ID_TO_DUNE_ENTRY)?;
-    let entry = dune_id_to_dune_entry.get(&id.value())?.unwrap();
+    let lune_id_to_lune_entry = rtx.open_table(LUNE_ID_TO_LUNE_ENTRY)?;
+    let entry = lune_id_to_lune_entry.get(&id.value())?.unwrap();
 
-    Ok(Some(DuneEntry::load(entry.value()).spaced_dune()))
+    Ok(Some(LuneEntry::load(entry.value()).spaced_lune()))
   }
 
   pub(crate) fn get_inscription_id_by_inscription_number(
@@ -1674,9 +1678,9 @@ impl Index {
 #[cfg(test)]
 mod tests {
   use {
-    bitcoin::secp256k1::rand::{self, RngCore},
-    crate::index::testing::Context,
     super::*,
+    crate::index::testing::Context,
+    bitcoin::secp256k1::rand::{self, RngCore},
   };
 
   #[test]
@@ -2279,7 +2283,7 @@ mod tests {
 
   #[test]
   #[ignore]
-  fn missing_inputs_are_fetched_from_dogecoin_core() {
+  fn missing_inputs_are_fetched_from_luckycoin_core() {
     for args in [
       ["--first-inscription-height", "2"].as_slice(),
       ["--first-inscription-height", "2", "--index-sats"].as_slice(),
@@ -2938,7 +2942,7 @@ mod tests {
           .get_unspent_outputs(Wallet::load(&context.options).unwrap())
           .unwrap_err()
           .to_string(),
-        r"output in Dogecoin Core wallet but not in ord index: [[:xdigit:]]{64}:\d+"
+        r"output in Luckycoin Core wallet but not in ord index: [[:xdigit:]]{64}:\d+"
       );
     }
   }
@@ -2962,8 +2966,8 @@ mod tests {
       context.mine_blocks(6);
 
       context
-          .index
-          .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
+        .index
+        .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
 
       let txid = context.rpc_server.broadcast_tx(TransactionTemplate {
         inputs: &[(2, 0, 0)],
@@ -2979,15 +2983,15 @@ mod tests {
       context.mine_blocks(1);
 
       context
-          .index
-          .assert_inscription_location(second_id, second_location, Some(100 * COIN_VALUE));
+        .index
+        .assert_inscription_location(second_id, second_location, Some(100 * COIN_VALUE));
 
       context.rpc_server.invalidate_tip();
       context.mine_blocks(2);
 
       context
-          .index
-          .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
+        .index
+        .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
 
       context.index.assert_non_existence_of_inscription(second_id);
     }
@@ -3025,8 +3029,8 @@ mod tests {
       context.mine_blocks(1);
 
       context
-          .index
-          .assert_inscription_location(second_id, second_location, Some(100 * COIN_VALUE));
+        .index
+        .assert_inscription_location(second_id, second_location, Some(100 * COIN_VALUE));
 
       context.rpc_server.invalidate_tip();
       context.rpc_server.invalidate_tip();
@@ -3041,8 +3045,8 @@ mod tests {
       context.mine_blocks(2);
 
       context
-          .index
-          .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
+        .index
+        .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
     }
   }
 
@@ -3080,8 +3084,8 @@ mod tests {
       context.mine_blocks(7);
 
       context
-          .index
-          .assert_inscription_location(second_id, second_location, Some(100 * COIN_VALUE));
+        .index
+        .assert_inscription_location(second_id, second_location, Some(100 * COIN_VALUE));
 
       for _ in 0..7 {
         context.rpc_server.invalidate_tip();
@@ -3092,8 +3096,8 @@ mod tests {
       context.index.assert_non_existence_of_inscription(second_id);
 
       context
-          .index
-          .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
+        .index
+        .assert_inscription_location(first_id, first_location, Some(50 * COIN_VALUE));
     }
   }
 }

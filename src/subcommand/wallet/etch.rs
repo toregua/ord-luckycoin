@@ -1,5 +1,5 @@
-use bitcoin::PackedLockTime;
 use super::*;
+use bitcoin::PackedLockTime;
 
 #[derive(Debug, Parser)]
 pub(crate) struct Etch {
@@ -7,8 +7,8 @@ pub(crate) struct Etch {
   divisibility: u8,
   #[clap(long, help = "Etch with fee rate of <FEE_RATE> sats/vB.")]
   fee_rate: FeeRate,
-  #[clap(long, help = "Etch dune <DUNE>. May contain `.` or `•`as spacers.")]
-  dune: SpacedDune,
+  #[clap(long, help = "Etch lune <LUNE>. May contain `.` or `•`as spacers.")]
+  lune: SpacedLune,
   #[clap(long, help = "Set supply to <SUPPLY>.")]
   supply: Decimal,
   #[clap(long, help = "Set currency symbol to <SYMBOL>.")]
@@ -25,48 +25,48 @@ impl Etch {
     let index = Index::open(&options)?;
 
     ensure!(
-      index.has_dune_index(),
-      "`ord wallet etch` requires index created with `--index-dunes` flag",
+      index.has_lune_index(),
+      "`ord wallet etch` requires index created with `--index-lunes` flag",
     );
 
     index.update()?;
 
-    let SpacedDune { dune, spacers } = self.dune;
+    let SpacedLune { lune, spacers } = self.lune;
 
-    let client = options.dogecoin_rpc_client_for_wallet_command(false)?;
+    let client = options.luckycoin_rpc_client_for_wallet_command(false)?;
 
     let count = client.get_block_count()?;
 
     ensure!(
-      index.dune(dune)?.is_none(),
-      "dune `{}` has already been etched",
-      dune,
+      index.lune(lune)?.is_none(),
+      "lune `{}` has already been etched",
+      lune,
     );
 
     let minimum_at_height =
-        Dune::minimum_at_height(options.chain(), Height(u32::try_from(count).unwrap() + 1));
+      Lune::minimum_at_height(options.chain(), Height(u32::try_from(count).unwrap() + 1));
 
     ensure!(
-      dune >= minimum_at_height,
-      "dune is less than minimum for next block: {} < {minimum_at_height}",
-      dune,
+      lune >= minimum_at_height,
+      "lune is less than minimum for next block: {} < {minimum_at_height}",
+      lune,
     );
 
-    ensure!(!dune.is_reserved(), "dune `{}` is reserved", dune);
+    ensure!(!lune.is_reserved(), "lune `{}` is reserved", lune);
 
     ensure!(
-      self.divisibility <= crate::dunes::MAX_DIVISIBILITY,
+      self.divisibility <= crate::lunes::MAX_DIVISIBILITY,
       "<DIVISIBILITY> must be equal to or less than 38"
     );
 
     let destination = get_change_address(&client)?;
 
-    let dunestone = Dunestone {
+    let lunestone = Lunestone {
       etching: Some(Etching {
         divisibility: Some(self.divisibility),
         terms: None,
         premine: None,
-        dune: Some(dune),
+        lune: Some(lune),
         spacers: Some(spacers),
         symbol: Some(self.symbol),
         turbo: false,
@@ -80,11 +80,11 @@ impl Etch {
       cenotaph: false,
     };
 
-    let script_pubkey = dunestone.encipher();
+    let script_pubkey = lunestone.encipher();
 
     ensure!(
       script_pubkey.len() <= 82,
-      "dunestone greater than maximum OP_RETURN size: {} > 82",
+      "lunestone greater than maximum OP_RETURN size: {} > 82",
       script_pubkey.len()
     );
 
@@ -117,12 +117,11 @@ impl Etch {
     let unsigned_transaction = fund_raw_transaction(&client, self.fee_rate, &unfunded_transaction)?;
 
     let signed_transaction = client
-        .sign_raw_transaction_with_wallet(&unsigned_transaction, None, None)?
-        .hex;
+      .sign_raw_transaction_with_wallet(&unsigned_transaction, None, None)?
+      .hex;
 
     let transaction = client.send_raw_transaction(&signed_transaction)?;
 
     Ok(Box::new(Output { transaction }))
   }
 }
-

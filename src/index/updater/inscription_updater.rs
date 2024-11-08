@@ -1,5 +1,5 @@
-use crate::drc20::operation::{Action, InscriptionOp};
 use crate::inscription::ParsedInscription;
+use crate::lky20::operation::{Action, InscriptionOp};
 use crate::sat::Sat;
 use crate::sat_point::SatPoint;
 
@@ -416,28 +416,26 @@ impl<'a, 'db, 'tx> InscriptionUpdater<'a, 'db, 'tx> {
     let new_satpoint = new_satpoint.store();
 
     self
-        .operations
-        .entry(flotsam.txid)
-        .or_default()
-        .push(InscriptionOp {
-          txid: flotsam.txid,
-          inscription_number: self
-              .id_to_entry
-              .get(&flotsam.inscription_id.store())?
-              .map(|entry| InscriptionEntry::load(entry.value()).inscription_number),
-          inscription_id: flotsam.inscription_id,
-          action: match flotsam.origin {
-            Origin::Old(_) => Action::Transfer,
-            Origin::New {
-              fee: _,
-              inscription,
-            } => Action::New {
-              inscription,
-            },
-          },
-          old_satpoint: flotsam.old_satpoint,
-          new_satpoint: Some(Entry::load(new_satpoint)),
-        });
+      .operations
+      .entry(flotsam.txid)
+      .or_default()
+      .push(InscriptionOp {
+        txid: flotsam.txid,
+        inscription_number: self
+          .id_to_entry
+          .get(&flotsam.inscription_id.store())?
+          .map(|entry| InscriptionEntry::load(entry.value()).inscription_number),
+        inscription_id: flotsam.inscription_id,
+        action: match flotsam.origin {
+          Origin::Old(_) => Action::Transfer,
+          Origin::New {
+            fee: _,
+            inscription,
+          } => Action::New { inscription },
+        },
+        old_satpoint: flotsam.old_satpoint,
+        new_satpoint: Some(Entry::load(new_satpoint)),
+      });
 
     self.satpoint_to_id.insert(&new_satpoint, &inscription_id)?;
     self.id_to_satpoint.insert(&inscription_id, &new_satpoint)?;

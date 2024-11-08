@@ -16,7 +16,7 @@ impl Transactions {
   pub(crate) fn run(self, options: Options) -> SubcommandResult {
     let mut output = Vec::new();
     for tx in options
-      .dogecoin_rpc_client_for_wallet_command(false)?
+      .luckycoin_rpc_client_for_wallet_command(false)?
       .list_transactions(
         None,
         Some(self.limit.unwrap_or(u16::MAX).into()),

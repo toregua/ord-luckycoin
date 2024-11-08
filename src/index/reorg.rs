@@ -1,5 +1,3 @@
-use std::env;
-use serde_json::json;
 use {super::*, updater::BlockData};
 
 #[derive(Debug, PartialEq)]
@@ -60,7 +58,8 @@ impl Reorg {
 
     let mut wtx = index.begin_write()?;
 
-    let oldest_savepoint = wtx.get_persistent_savepoint(wtx.list_persistent_savepoints()?.min().unwrap())?;
+    let oldest_savepoint =
+      wtx.get_persistent_savepoint(wtx.list_persistent_savepoints()?.min().unwrap())?;
 
     wtx.restore_savepoint(&oldest_savepoint)?;
 
@@ -77,14 +76,10 @@ impl Reorg {
 
   pub(crate) fn update_savepoints(index: &Index, height: u32) -> Result {
     if (height < SAVEPOINT_INTERVAL || height % SAVEPOINT_INTERVAL == 0)
-      && u32::try_from(
-      index
-          .client
-          .get_block_count()?
-        )
+      && u32::try_from(index.client.get_block_count()?)
         .unwrap()
         .saturating_sub(height)
-      <= CHAIN_TIP_DISTANCE
+        <= CHAIN_TIP_DISTANCE
     {
       let wtx = index.begin_write()?;
 

@@ -1,23 +1,22 @@
-use bitcoin::SchnorrSighashType;
+use crate::sat_point::SatPoint;
 use bitcoin::secp256k1::schnorr::Signature;
+use bitcoin::SchnorrSighashType;
 use {
   super::*,
   crate::wallet::Wallet,
   bitcoin::{
     blockdata::{opcodes, script},
-    PrivateKey,
-    util::schnorr::{TapTweak, TweakedKeyPair, TweakedPublicKey, UntweakedKeyPair},
-    util::sighash::{Prevouts, SighashCache},
     locktime::PackedLockTime,
     policy::MAX_STANDARD_TX_WEIGHT,
     secp256k1::{self, constants::SCHNORR_SIGNATURE_SIZE, rand, Secp256k1, XOnlyPublicKey},
+    util::schnorr::{TapTweak, TweakedKeyPair, TweakedPublicKey, UntweakedKeyPair},
+    util::sighash::{Prevouts, SighashCache},
     util::taproot::{ControlBlock, LeafVersion, TapLeafHash, TaprootBuilder},
-    Witness,
+    PrivateKey, Witness,
   },
   bitcoincore_rpc::bitcoincore_rpc_json::{ImportDescriptors, Timestamp},
   bitcoincore_rpc::Client,
 };
-use crate::sat_point::SatPoint;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct Output {
@@ -64,7 +63,7 @@ impl Inscribe {
     let index = Index::open(&options)?;
     index.update()?;
 
-    let client = options.dogecoin_rpc_client_for_wallet_command(false)?;
+    let client = options.luckycoin_rpc_client_for_wallet_command(false)?;
 
     let mut utxos = index.get_unspent_outputs(Wallet::load(&options)?)?;
 
@@ -376,8 +375,8 @@ impl Inscribe {
 
 #[cfg(test)]
 mod tests {
-  use bitcoin::blockdata::constants::COIN_VALUE;
   use super::*;
+  use bitcoin::blockdata::constants::COIN_VALUE;
 
   #[test]
   fn reveal_transaction_pays_fee() {

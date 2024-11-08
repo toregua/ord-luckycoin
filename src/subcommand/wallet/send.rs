@@ -16,21 +16,19 @@ pub struct Output {
 
 impl Send {
   pub(crate) fn run(self, options: Options) -> SubcommandResult {
-    let address = self
-        .address
-        .clone();
+    let address = self.address.clone();
 
     let index = Index::open(&options)?;
     index.update()?;
 
-    let client = options.dogecoin_rpc_client_for_wallet_command(false)?;
+    let client = options.luckycoin_rpc_client_for_wallet_command(false)?;
 
     let unspent_outputs = index.get_unspent_outputs(Wallet::load(&options)?)?;
 
     let inscriptions = index.get_inscriptions(None)?;
 
     let dunic_outputs =
-        index.get_dunic_outputs(&unspent_outputs.keys().cloned().collect::<Vec<OutPoint>>())?;
+      index.get_dunic_outputs(&unspent_outputs.keys().cloned().collect::<Vec<OutPoint>>())?;
 
     let satpoint = match self.outgoing {
       Outgoing::Amount(amount) => {
@@ -38,17 +36,17 @@ impl Send {
         return Ok(Box::new(Output { transaction }));
       }
       Outgoing::InscriptionId(id) => index
-          .get_inscription_satpoint_by_id(id)?
-          .ok_or_else(|| anyhow!("inscription {id} not found"))?,
-      Outgoing::Dune { decimal, dune } => {
-        let transaction = Self::send_dunes(
+        .get_inscription_satpoint_by_id(id)?
+        .ok_or_else(|| anyhow!("inscription {id} not found"))?,
+      Outgoing::Lune { decimal, lune } => {
+        let transaction = Self::send_lunes(
           address,
           &client,
           decimal,
           self.fee_rate,
           &index,
           inscriptions,
-          dune,
+          lune,
           dunic_outputs,
           unspent_outputs,
         )?;
@@ -116,34 +114,34 @@ impl Send {
     )?)
   }
 
-  fn send_dunes(
+  fn send_lunes(
     address: Address,
     client: &Client,
     decimal: Decimal,
     fee_rate: FeeRate,
     index: &Index,
     inscriptions: BTreeMap<SatPoint, InscriptionId>,
-    spaced_dune: SpacedDune,
+    spaced_lune: SpacedLune,
     dunic_outputs: BTreeSet<OutPoint>,
     unspent_outputs: BTreeMap<OutPoint, Amount>,
   ) -> Result<Txid> {
     ensure!(
-      index.has_dune_index(),
-      "sending dunes with `ord send` requires index created with `--index-dunes` flag",
+      index.has_lune_index(),
+      "sending lunes with `ord send` requires index created with `--index-lunes` flag",
     );
 
     let (id, entry) = index
-        .dune(spaced_dune.dune)?
-        .with_context(|| format!("dune `{}` has not been etched", spaced_dune.dune))?;
+      .lune(spaced_lune.lune)?
+      .with_context(|| format!("lune `{}` has not been etched", spaced_lune.lune))?;
 
     let amount = decimal.to_amount(entry.divisibility)?;
 
     let inscribed_outputs = inscriptions
-        .keys()
-        .map(|satpoint| satpoint.outpoint)
-        .collect::<HashSet<OutPoint>>();
+      .keys()
+      .map(|satpoint| satpoint.outpoint)
+      .collect::<HashSet<OutPoint>>();
 
-    let mut input_dunes = 0;
+    let mut input_lunes = 0;
     let mut input = Vec::new();
 
     for output in dunic_outputs {
@@ -151,30 +149,30 @@ impl Send {
         continue;
       }
 
-      let balance = index.get_dune_balance(output, id)?;
+      let balance = index.get_lune_balance(output, id)?;
 
       if balance > 0 {
-        input_dunes += balance;
+        input_lunes += balance;
         input.push(output);
       }
 
-      if input_dunes >= amount {
+      if input_lunes >= amount {
         break;
       }
     }
 
     ensure! {
-      input_dunes >= amount,
+      input_lunes >= amount,
       "insufficient `{}` balance, only {} in wallet",
-      spaced_dune,
+      spaced_lune,
       Pile {
-        amount: input_dunes,
+        amount: input_lunes,
         divisibility: entry.divisibility,
         symbol: entry.symbol
       },
     }
 
-    let dunestone = Dunestone {
+    let lunestone = Lunestone {
       edicts: vec![Edict {
         amount,
         id: id.into(),
@@ -187,17 +185,17 @@ impl Send {
       version: 1,
       lock_time: PackedLockTime::ZERO,
       input: input
-          .into_iter()
-          .map(|previous_output| TxIn {
-            previous_output,
-            script_sig: Script::new(),
-            sequence: Sequence::MAX,
-            witness: Witness::new(),
-          })
-          .collect(),
+        .into_iter()
+        .map(|previous_output| TxIn {
+          previous_output,
+          script_sig: Script::new(),
+          sequence: Sequence::MAX,
+          witness: Witness::new(),
+        })
+        .collect(),
       output: vec![
         TxOut {
-          script_pubkey: dunestone.encipher(),
+          script_pubkey: lunestone.encipher(),
           value: 0,
         },
         TxOut {
@@ -214,8 +212,8 @@ impl Send {
     let unsigned_transaction = fund_raw_transaction(client, fee_rate, &unfunded_transaction)?;
 
     let signed_transaction = client
-        .sign_raw_transaction_with_wallet(&unsigned_transaction, None, None)?
-        .hex;
+      .sign_raw_transaction_with_wallet(&unsigned_transaction, None, None)?
+      .hex;
 
     Ok(client.send_raw_transaction(&signed_transaction)?)
   }

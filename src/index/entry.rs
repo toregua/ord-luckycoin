@@ -1,4 +1,4 @@
-use crate::dunes::MintError;
+use crate::lunes::MintError;
 use crate::sat::Sat;
 use crate::sat_point::SatPoint;
 
@@ -41,7 +41,7 @@ impl Entry for Txid {
 }
 
 #[derive(Debug, PartialEq, Copy, Clone, Serialize, Deserialize)]
-pub(crate) struct DuneEntry {
+pub(crate) struct LuneEntry {
   pub(crate) block: u64,
   pub(crate) burned: u128,
   pub(crate) divisibility: u8,
@@ -50,7 +50,7 @@ pub(crate) struct DuneEntry {
   pub(crate) mints: u128,
   pub(crate) number: u64,
   pub(crate) premine: u128,
-  pub(crate) dune: Dune,
+  pub(crate) lune: Lune,
   pub(crate) spacers: u32,
   pub(crate) supply: u128,
   pub(crate) symbol: Option<char>,
@@ -58,7 +58,7 @@ pub(crate) struct DuneEntry {
   pub(crate) turbo: bool,
 }
 
-pub(super) type DuneEntryValue = (
+pub(super) type LuneEntryValue = (
   u64,                     // block
   u128,                    // burned
   u8,                      // divisibility
@@ -66,7 +66,7 @@ pub(super) type DuneEntryValue = (
   Option<TermsEntryValue>, // terms parameters
   u128,                    // mints
   u64,                     // number
-  (u128, u32),             // dune + spacers
+  (u128, u32),             // lune + spacers
   (u128, u128),            // supply + premine
   u32,                     // symbol
   u64,                     // timestamp
@@ -80,10 +80,10 @@ type TermsEntryValue = (
   (Option<u64>, Option<u64>), // offset
 );
 
-impl DuneEntry {
-  pub(crate) fn spaced_dune(&self) -> SpacedDune {
-    SpacedDune {
-      dune: self.dune,
+impl LuneEntry {
+  pub(crate) fn spaced_lune(&self) -> SpacedLune {
+    SpacedLune {
+      lune: self.lune,
       spacers: self.spacers,
     }
   }
@@ -165,7 +165,7 @@ impl DuneEntry {
   }
 }
 
-impl Default for DuneEntry {
+impl Default for LuneEntry {
   fn default() -> Self {
     Self {
       block: 0,
@@ -176,7 +176,7 @@ impl Default for DuneEntry {
       mints: 0,
       number: 0,
       premine: 0,
-      dune: Dune(0),
+      lune: Lune(0),
       spacers: 0,
       supply: 0,
       symbol: None,
@@ -200,8 +200,8 @@ impl Entry for Txid {
   }
 }*/
 
-impl Entry for DuneEntry {
-  type Value = DuneEntryValue;
+impl Entry for LuneEntry {
+  type Value = LuneEntryValue;
   fn load(
     (
       block,
@@ -211,12 +211,12 @@ impl Entry for DuneEntry {
       terms,
       mints,
       number,
-      (dune, spacers),
+      (lune, spacers),
       (supply, premine),
       symbol,
       timestamp,
       turbo,
-    ): DuneEntryValue,
+    ): LuneEntryValue,
   ) -> Self {
     Self {
       block,
@@ -237,7 +237,7 @@ impl Entry for DuneEntry {
       mints,
       number,
       premine,
-      dune: Dune(dune),
+      lune: Lune(lune),
       spacers,
       supply,
       symbol: char::from_u32(symbol),
@@ -282,7 +282,7 @@ impl Entry for DuneEntry {
       ),
       self.mints,
       self.number,
-      (self.dune.0, self.spacers),
+      (self.lune.0, self.spacers),
       (self.supply, self.premine),
       self.symbol.map(u32::from).unwrap_or(u32::MAX),
       self.timestamp,
@@ -291,10 +291,10 @@ impl Entry for DuneEntry {
   }
 }
 
-pub(super) type DuneIdValue = (u64, u32);
+pub(super) type LuneIdValue = (u64, u32);
 
-impl Entry for DuneId {
-  type Value = DuneIdValue;
+impl Entry for LuneId {
+  type Value = LuneIdValue;
 
   fn load((height, index): Self::Value) -> Self {
     Self { height, index }
@@ -305,7 +305,7 @@ impl Entry for DuneId {
   }
 }
 
-pub(super) type DuneAddressBalance = (u128, u128);
+pub(super) type LuneAddressBalance = (u128, u128);
 
 pub(crate) struct InscriptionEntry {
   pub(crate) fee: u64,

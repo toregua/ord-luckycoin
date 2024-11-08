@@ -1,5 +1,5 @@
-use crate::sat::Sat;
 use super::*;
+use crate::sat::Sat;
 
 #[derive(Copy, Clone, Debug, Display, FromStr, Ord, Eq, PartialEq, PartialOrd)]
 pub(crate) struct Height(pub(crate) u32);
@@ -45,8 +45,8 @@ impl PartialEq<u32> for Height {
 
 #[cfg(test)]
 mod tests {
-  use bitcoin::blockdata::constants::COIN_VALUE;
   use super::*;
+  use bitcoin::blockdata::constants::COIN_VALUE;
 
   #[test]
   fn n() {

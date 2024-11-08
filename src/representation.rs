@@ -8,7 +8,7 @@ pub(crate) enum Representation {
   InscriptionId,
   Integer,
   OutPoint,
-  Dune,
+  Lune,
   SatPoint,
 }
 
@@ -23,7 +23,7 @@ impl Representation {
         Self::InscriptionId => r"^[[:xdigit:]]{64}i\d+$",
         Self::Integer => r"^[0-9]*$",
         Self::OutPoint => r"^[[:xdigit:]]{64}:\d+$",
-        Self::Dune => r"^[A-Z•.]+$",
+        Self::Lune => r"^[A-Z•.]+$",
         Self::SatPoint => r"^[[:xdigit:]]{64}:\d+:\d+$",
       },
     )
@@ -49,7 +49,7 @@ const PATTERNS: &[(Representation, &str)] = &[
   Representation::InscriptionId.pattern(),
   Representation::Integer.pattern(),
   Representation::OutPoint.pattern(),
-  Representation::Dune.pattern(),
+  Representation::Lune.pattern(),
   Representation::SatPoint.pattern(),
 ];
 

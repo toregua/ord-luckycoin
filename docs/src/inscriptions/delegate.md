@@ -14,7 +14,7 @@ To create an inscription I with delegate inscription D:
 - Create an inscription I with no content type and empty data. Unlike the ordinals protocol, the doginals protocol interprets the initial OP codes to determine the number of data chunks (subwoofers) an inscription will contain. To ensure interoperability with prior indexer versions, delegates begin as an empty inscription.
 - At the end of inscription I, push the delegate specifics. This includes adding the tag 11, represented as OP_PUSH 11, followed by the serialized binary inscription ID of D. The ID should be serialized as a 32-byte TXID.
 
-_NB_ The bytes of a dogecoin transaction ID are reversed in their text
+_NB_ The bytes of a luckycoin transaction ID are reversed in their text
 representation, so the serialized transaction ID will be in the opposite order.
 
 ### Example
