@@ -72,33 +72,3 @@ If no timeout is add, the process cannot close the database properly and the nex
 docker-compose stop -t 600
 docker-compose down
 ```
-
-
-
-
-
-```shell
-
-### Start the ord indexer / server
-```shell
-export RUST_LOG=info
-
-# ensure the data directory exists
-mkdir -p /mnt/ord-node/indexer-data-main
-
-# replace YOUR_RPC_URL with the URL of your Luckycoin node like: http://foo:bar@127.0.0.1:22555
-
-// Start Indexing
-ord --rpc-url=YOUR_RPC_URL --data-dir=/mnt/ord-node/indexer-data-main --nr-parallel-requests=16 --first-inscription-height=4609723 --first-lune-height=5084000 --index-lunes --index-transactions --index-lky20 index
-
-// Start Indexing + Server
-ord --rpc-url=YOUR_RPC_URL --data-dir=/mnt/ord-node/indexer-data-main --nr-parallel-requests=16 --first-inscription-height=4609723 --first-lune-height=5084000 --index-lunes --index-transactions --index-lky20 server
-```
-`--index-transactions` will store transaction data, this is currently needed for `--index-lky20` and furthermore helps
-for a better performance for the API.
-`--nr-parallel-requests` will configure how many parallel requests while indexing are sent to your RPC Server - 16 is
-recommended for default node settings.
-
-With all settings enabled, the database will currently need around 400gb when fully indexed.
-
-### Required env vars
