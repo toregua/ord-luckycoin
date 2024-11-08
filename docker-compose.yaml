@@ -17,9 +17,11 @@ services:
     #      - ${ORD_HTTP_PORT:-8080}:80
     entrypoint: [ "ord", "--rpc-url=${RPC_URL}", "--data-dir=/root/.data", "--nr-parallel-requests=250", "--first-inscription-height=${FIRST_INSCRIPTION_HEIGHT}", "--first-lune-height=${FIRST_LUNE_HEIGHT}", "--index-lunes", "--index-transactions", "--index-lky20", "server" ]
     volumes:
-      - ${LKY_MOUNT_DIR_INDEXER:-/mnt/ord-node}/indexer-data-main:/root/.data:delegated
+      #- ${LKY_MOUNT_DIR_INDEXER:-/mnt/ord-node}/indexer-data-main:/root/.data:delegated
       # If your luckycoin node is running in a container, you can mount the luckycoin data directory to the indexer container
       # - lky-data:/root/.luckycoin
+      - /app/luckycoin-node/volume:/root/.luckycoin:ro
+      - ./ord_luckycoin_data:/root/.data
     logging:
       driver: "json-file"
       options:
