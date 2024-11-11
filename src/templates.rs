@@ -137,7 +137,7 @@ mod tests {
   <body>
   <header>
     <nav>
-      <a href=/>Luckynals<sup>alpha</sup></a>
+      <a href=/>Luckinals<sup>alpha</sup></a>
       .*
       <a href=/rare.txt>rare.txt</a>
       <form action=/search method=get>
@@ -163,7 +163,7 @@ mod tests {
         domain: None,
         index_sats: true,
       }),),
-      r".*<nav>\s*<a href=/>Luckynals<sup>alpha</sup></a>.*"
+      r".*<nav>\s*<a href=/>Luckinals<sup>alpha</sup></a>.*"
     );
   }
 
@@ -175,7 +175,7 @@ mod tests {
         domain: None,
         index_sats: false,
       }),),
-      r".*<nav>\s*<a href=/>Luckynals<sup>alpha</sup></a>.*\s*<form action=/search.*",
+      r".*<nav>\s*<a href=/>Luckinals<sup>alpha</sup></a>.*\s*<form action=/search.*",
     );
   }
 
@@ -187,7 +187,7 @@ mod tests {
         domain: None,
         index_sats: true,
       }),),
-      r".*<nav>\s*<a href=/>Luckynals<sup>signet</sup></a>.*"
+      r".*<nav>\s*<a href=/>Luckinals<sup>signet</sup></a>.*"
     );
   }
 }
