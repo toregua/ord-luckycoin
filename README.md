@@ -1,77 +1,117 @@
+
+
+---
+
 # Luckycoin Ord
 
-ℹ️ This is a fork/based on [verydogelabs/wonky-ord-dogecoin](https://github.com/verydogelabs/wonky-ord-dogecoin)
+ℹ️ This is a fork based on [verydogelabs/wonky-ord-dogecoin](https://github.com/verydogelabs/wonky-ord-dogecoin)
 
-You can see a running version here : [LUCKY-ORD.COM](https://lucky-ord.com/) - Credits to Danny Glova
+You can see a running version here: [LUCKY-ORD.COM](https://lucky-ord.com/) - Credits to @DogepayDRC20
 
+## API Documentation
 
-## API documentation
-You can find the API documentation [here](openapi.yaml).
-Most convenient way to view the API documentation is to use the [Swagger Editor](https://editor.swagger.io/).
-You can import the `openapi.yaml` file and view the API documentation via Import URL: `https://raw.githubusercontent.com/toregua/ord-luckycoin/main/openapi.yaml`.
+Find the API documentation [here](openapi.yaml). You can view it conveniently in the [Swagger Editor](https://editor.swagger.io/) by importing the `openapi.yaml` file via URL: `https://raw.githubusercontent.com/toregua/ord-luckycoin/main/openapi.yaml`.
 
-## TL;DR How to run
+---
 
-### Preqrequisites
-You will have to launch your own Luckycoin node and have it fully synced. 
+## Installation Guide
 
-You can use the following way to set up your own Luckycoin node:
-1. Manually by following this documentation [install a luckycoin node manually on unix](https://github.com/luckycoin-community/luckycoin/blob/master/doc/build-unix.md).
-2. Using docker (recommanded way) following this repo and documentation [run a luckycoin node inside a docker container](https://github.com/toregua/luckycoin-node)
+### 1. Prerequisites
 
-### Ord Parameters
+Install dependencies:
 
-`--index-transactions` will store transaction data, this is currently needed for `--index-lky20` and furthermore helps
-for a better performance for the API.
+```bash
+sudo apt-get update
+sudo apt-get install -y build-essential libssl-dev pkg-config curl git
+```
 
-`--index-lky20` will store luckyscriptions data with users balance, tick list & tick holders
+### 2. Install Rust and Cargo
 
-`--index-lunes` will store lunes data (Lune is the same concept as RUNE on BTC on DUNE on Doge)
+**ord-luckycoin** requires Rust to build from source. Install Rust and Cargo with:
 
-`--nr-parallel-requests` will configure how many parallel requests while indexing are sent to your RPC Server - 16 is
-recommended for default node settings.
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
 
-### Env variables
+Verify Rust installation:
 
-To have the indexer running well you have to specify some env variables.
+```bash
+cargo --version
+```
 
-First you have to create a `.env`  file (you can copy paste the `.env.example` to create it)
+### 3. Clone and Build ord-luckycoin
 
-`FIRST_INSCRIPTION_HEIGHT` for now i have set the value to 0 to be sure to handle all inscriptions. If you have the right value, you can indicate it, which will improve indexing speed.
+Clone the ord-luckycoin repository and build the project:
 
-`FIRST_LUNE_HEIGHT` for now i am not sure anyone had already deployed a LUNE on luckycoin so for now 0 also
+```bash
+git clone https://github.com/toregua/ord-luckycoin.git
+cd ord-luckycoin
+cargo build --release
+```
 
-`RPC_URL` it is here the more important part because you have to specify your node rpc url (http://user:pass@127.0.0.1:22555 for example)
+The compiled binary will be located in the `target/release` directory.
 
+### 4. Launch Luckycoin Node
 
-## Start the lucky ord indexer / server in Docker
-I recommand to use a docker image to run the ord indexer / server.
+Ensure your **Luckycoin Core** node is running and fully synced. You can install and run it manually or use Docker. Here’s a Docker guide to set up and sync a Luckycoin node: [run a luckycoin node inside a docker container](https://github.com/toregua/luckycoin-node).
 
-### Prerequisites Docker
-1. Use ubuntu linux or a similar distribution
-2. Install luckycoin node and have it fully synced (recommanded way is [run a luckycoin node inside a docker container](https://github.com/toregua/luckycoin-node))
-3. Install docker and docker-compose (Ubuntu)[https://docs.docker.com/engine/install/ubuntu/]
-4. Clone this repository using git clone
-5. Navigate inside the cloned repository folder
+After setting up **Luckycoin Core**, make sure to set `txindex=1` in `luckycoin.conf` to enable transaction indexing.
 
-### Build the Docker image
+---
+
+## TL;DR - How to Run ord-luckycoin
+
+### ord-luckycoin Parameters
+
+- **`--index-transactions`**: Enables storing transaction data, required for `--index-lky20` and enhances API performance.
+- **`--index-lky20`**: Tracks luckyscriptions with user balances, tick list, and tick holders.
+- **`--index-lunes`**: Enables tracking of lunes (analogous to BTC RUNE or Dogecoin DUNE).
+- **`--nr-parallel-requests`**: Sets the number of parallel RPC requests. `16` is recommended for standard setups.
+
+### Environment Variables
+
+Set up a `.env` file (copy from `.env.example`) with the following:
+
+- **`FIRST_INSCRIPTION_HEIGHT`**: Set to `0` to handle all inscriptions, or use a specific height for faster indexing.
+- **`FIRST_LUNE_HEIGHT`**: Set to `0` initially; update if LUNE data is deployed on Luckycoin.
+- **`RPC_URL`**: Provide your node RPC URL (e.g., `http://user:pass@127.0.0.1:22555`).
+
+---
+
+## Running ord-luckycoin in Docker
+
+Using Docker to run the ord-luckycoin indexer/server is recommended.
+
+### Docker Setup
+
+1. **System Requirements**: Ubuntu or a similar Linux distribution.
+2. **Luckycoin Node**: Install and sync a Luckycoin node (recommended via [Docker guide](https://github.com/toregua/luckycoin-node)).
+3. **Install Docker and Docker-Compose**: [Docker installation guide](https://docs.docker.com/engine/install/ubuntu/).
+4. **Clone Repository**: Clone this repository and navigate to the cloned directory.
+
+### Build and Start Docker Image
+
+To build and run the **ord-luckycoin** Docker container:
+
 ```shell
+# Build Docker image
 docker-compose build
-```
-### Start the ord in a docker container in background
-```shell
+
+# Start ord-luckycoin in background
 docker-compose up -d
-```
-### Logs access
-```shell
+
+# View logs
 docker-compose logs -f --tail 200
 ```
 
-### Stop the ord in a docker container
-When stopping the ord in a container it is important to add a timeout.
-If no timeout is add, the process cannot close the database properly and the next start will take ages or fail.
+### Stop Docker Container
+
+When stopping the container, add a timeout to avoid database issues.
 
 ```shell
 docker-compose stop -t 600
 docker-compose down
 ```
+
+---
